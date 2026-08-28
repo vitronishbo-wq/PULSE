@@ -1,0 +1,6 @@
+{
+  "name": "PULSE.OS — Universal Lightweight Commerce Engine",
+  "description": "Event-driven Universal Lightweight Commerce Engine with real-time stock BOM recipes, double-entry accounting, fiscal adapters (Angola AGT / Portugal AT / SAF-T), immutable audit ledger, and AI smart text command parsing.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

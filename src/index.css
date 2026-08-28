@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------
+   THERMAL RECEIPT & FISCAL PRINTING RULES (@media print)
+   ---------------------------------------------------- */
+@media print {
+  /* Hide the rest of the application */
+  body > #root {
+    display: none !important;
+  }
+
+  /* Reset document defaults for thermal paper */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Display and format the print portal container */
+  #pulse-print-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    visibility: visible !important;
+  }
+
+  #pulse-print-portal * {
+    visibility: visible !important;
+    color: #000000 !important;
+  }
+
+  @page {
+    margin: 0;
+  }
+}
+
+/* In normal screen mode, keep print portal hidden */
+@media screen {
+  #pulse-print-portal {
+    display: none;
+  }
+}
