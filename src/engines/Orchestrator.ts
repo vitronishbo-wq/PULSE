@@ -195,6 +195,18 @@ export class Orchestrator {
     return this.tenantsMap.get(id);
   }
 
+  public getActiveTenant(): TenantProfile {
+    return this.tenantsMap.get(this.activeTenantId) || initialTenants[0];
+  }
+
+  public isImpersonating(): boolean {
+    return !!this.impersonationSession?.active;
+  }
+
+  public getEventBusLogs() {
+    return this.eventBus.getEventHistory();
+  }
+
   public registerTenant(tenant: TenantProfile): void {
     this.tenantsMap.set(tenant.id, tenant);
     this.activeTenantId = tenant.id;

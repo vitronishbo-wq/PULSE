@@ -20,6 +20,7 @@ import {
   Document,
   Product,
   Customer,
+  CustomerLedgerMovement,
   Supplier,
   PurchaseEntry,
   SupplierLedgerMovement,
@@ -43,6 +44,8 @@ import {
 } from './types/pulse';
 import {
   initialUsers,
+  initialCustomers,
+  initialCustomerMovements,
   initialPurchases,
   initialSupplierMovements,
   initialBankAccounts,
@@ -59,6 +62,7 @@ import { UnifiedMenuDrawer } from './components/UnifiedMenuDrawer';
 import { POSView } from './components/POSView';
 import { DocumentsView } from './components/DocumentsView';
 import { StockView } from './components/StockView';
+import { CustomersView } from './components/CustomersView';
 import { SuppliersView } from './components/SuppliersView';
 import { TreasuryView } from './components/TreasuryView';
 import { HRPayrollView } from './components/HRPayrollView';
@@ -76,6 +80,8 @@ import { AdminModal } from './components/AdminModal';
 import { CommandCenterModal } from './components/CommandCenterModal';
 import { TenantProvisioningWizard } from './components/TenantProvisioningWizard';
 import { TenantSettingsView } from './components/TenantSettingsView';
+import { BillingView } from './components/BillingView';
+import { ReportsView } from './components/reports/ReportsView';
 import { InputNormalizer } from './engines/InputNormalizer';
 import { ProfileEngine, BusinessProfileEngine } from './engines/ProfileEngine';
 
@@ -92,12 +98,15 @@ type NavTab =
   | 'SERVICES_BILLING'
   | 'DOCS'
   | 'STOCK'
+  | 'CUSTOMERS'
   | 'SUPPLIERS'
   | 'TREASURY'
   | 'HR'
   | 'EVENTBUS'
   | 'FISCAL'
-  | 'SETTINGS';
+  | 'REPORTS'
+  | 'SETTINGS'
+  | 'BILLING';
 
 export default function App() {
   const orchestrator = Orchestrator.getInstance();
@@ -432,6 +441,18 @@ export default function App() {
       } catch (e) {}
     }
     return initialSupplierMovements;
+  });
+
+  // Customer Ledger Movements (Histórico / Conta-Corrente Clientes) State
+  const customerMovementsKey = `pulse_customer_movs_${tenant?.id || 'default'}`;
+  const [customerMovements, setCustomerMovements] = useState<CustomerLedgerMovement[]>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const saved = window.localStorage.getItem(customerMovementsKey);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return initialCustomerMovements;
   });
 
   // Financial Module State: Contas Bancárias & TPA
@@ -1283,6 +1304,160 @@ export default function App() {
   };
 
   // ==========================================
+  // CUSTOMER MODULE HANDLERS
+  // ==========================================
+  const handleSaveCustomer = (customer: Customer) => {
+    orchestrator.moneyEngine.upsertCustomer(customer);
+    const updated = orchestrator.moneyEngine.getCustomers();
+    setCustomers(updated);
+    setToastMessage({
+      title: 'Ficha de Cliente Guardada',
+      desc: `Dados de ${customer.name} (NIF: ${customer.taxId}) gravados com sucesso.`,
+      type: 'success',
+    });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleToggleCustomerStatus = (customerId: string) => {
+    const cust = customers.find((c) => c.id === customerId);
+    if (!cust) return;
+    const newStatus = cust.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const updatedCust: Customer = { ...cust, status: newStatus };
+    orchestrator.moneyEngine.upsertCustomer(updatedCust);
+    const updated = orchestrator.moneyEngine.getCustomers();
+    setCustomers(updated);
+    setToastMessage({
+      title: `Cliente ${newStatus === 'ACTIVE' ? 'Ativado' : 'Inativado'}`,
+      desc: `${cust.name} está agora ${newStatus === 'ACTIVE' ? 'ativo' : 'inativo'}.`,
+      type: 'info',
+    });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleReceiveCustomerLedgerPayment = (params: {
+    customerId: string;
+    customerName: string;
+    customerTaxId: string;
+    amount: number;
+    paymentMethod: PaymentMethod;
+    bankAccountId?: string;
+    bankAccountName?: string;
+    docId?: string;
+    docNumber?: string;
+    reference: string;
+    notes?: string;
+  }) => {
+    const nextNum = receipts.length + 1;
+    const receiptNumber = `RC 2026/${String(nextNum).padStart(3, '0')}`;
+
+    // 1. Register in receipts
+    const newReceipt: ReceiptEntry = {
+      id: `rec_${Date.now()}`,
+      receiptNumber,
+      date: new Date().toISOString().split('T')[0],
+      customerId: params.customerId,
+      customerName: params.customerName,
+      customerTaxId: params.customerTaxId,
+      originDocId: params.docId,
+      originDocNumber: params.docNumber,
+      paymentMethod: params.paymentMethod,
+      bankAccountId: params.bankAccountId,
+      bankAccountName: params.bankAccountName,
+      amount: params.amount,
+      reference: params.reference,
+      status: 'RECEIVED',
+      reconciliationStatus: 'RECONCILED',
+      notes: params.notes || 'Recebimento de Conta-Corrente',
+      registeredBy: currentUser.name,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReceipts = [newReceipt, ...receipts];
+    setReceipts(updatedReceipts);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(receiptsKey, JSON.stringify(updatedReceipts));
+    }
+
+    // 2. Adjust customer balance in MoneyEngine
+    const cust = customers.find((c) => c.id === params.customerId);
+    const prevBalance = cust?.currentBalance || 0;
+    const newBalance = Math.max(0, prevBalance - params.amount);
+    if (cust) {
+      cust.currentBalance = newBalance;
+      orchestrator.moneyEngine.upsertCustomer(cust);
+      setCustomers(orchestrator.moneyEngine.getCustomers());
+    }
+
+    // 3. Register CustomerLedgerMovement
+    const newMov: CustomerLedgerMovement = {
+      id: `cmov_${Date.now()}`,
+      customerId: params.customerId,
+      customerName: params.customerName,
+      customerTaxId: params.customerTaxId,
+      date: new Date().toISOString().split('T')[0],
+      type: 'RECEIPT',
+      docNumber: receiptNumber,
+      docId: params.docId,
+      description: params.notes || `Recebimento ref. ${params.docNumber || 'Conta-Corrente'} via ${params.paymentMethod}`,
+      debit: 0,
+      credit: params.amount,
+      runningBalance: newBalance,
+      paymentMethod: params.paymentMethod,
+      bankAccountRef: params.bankAccountName,
+      receiptNumber,
+      status: 'SETTLED',
+      registeredBy: currentUser.name,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedMovs = [newMov, ...customerMovements];
+    setCustomerMovements(updatedMovs);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(customerMovementsKey, JSON.stringify(updatedMovs));
+    }
+
+    // 4. Adjust Treasury balances (Cash/Bank)
+    if (params.paymentMethod === 'CASH') {
+      orchestrator.moneyEngine.adjustCashBalance(params.amount);
+    } else {
+      orchestrator.moneyEngine.adjustBankBalance(params.amount);
+      if (params.bankAccountId) {
+        const updatedBanks = bankAccounts.map((b) =>
+          b.id === params.bankAccountId
+            ? { ...b, balance: b.balance + params.amount }
+            : b
+        );
+        setBankAccounts(updatedBanks);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(bankAccountsKey, JSON.stringify(updatedBanks));
+        }
+      }
+    }
+
+    // 5. Accounting entry
+    orchestrator.accountingEngine.recordEntry({
+      id: `ENT_${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      description: `Recebimento ${receiptNumber} - ${params.customerName}`,
+      debitAccount: params.paymentMethod === 'CASH' ? '43.1' : '45.1',
+      debitAccountName: params.paymentMethod === 'CASH' ? 'Caixa Geral' : 'Depósitos à Ordem',
+      creditAccount: '21.1',
+      creditAccountName: 'Clientes Conta Corrente',
+      amount: params.amount,
+      currency: tenant.currency,
+      docNumber: receiptNumber,
+    });
+
+    syncStateFromEngines();
+    setToastMessage({
+      title: `Recibo ${receiptNumber} Emitido`,
+      desc: `Recebimento de ${params.amount.toLocaleString()} ${tenant.currency} de ${params.customerName} liquidado.`,
+      type: 'success',
+    });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // ==========================================
   // FINANCIAL MODULE HANDLERS
   // ==========================================
 
@@ -1309,19 +1484,19 @@ export default function App() {
       if (newReceipt.customerId) {
         const cust = customers.find((c) => c.id === newReceipt.customerId);
         if (cust) {
-          cust.currentBalance = Math.max(0, cust.currentBalance - newReceipt.amountReceived);
+          cust.currentBalance = Math.max(0, cust.currentBalance - newReceipt.amount);
           orchestrator.moneyEngine.upsertCustomer(cust);
         }
       }
 
       if (newReceipt.paymentMethod === 'CASH') {
-        orchestrator.moneyEngine.adjustCashBalance(newReceipt.amountReceived);
+        orchestrator.moneyEngine.adjustCashBalance(newReceipt.amount);
       } else {
-        orchestrator.moneyEngine.adjustBankBalance(newReceipt.amountReceived);
+        orchestrator.moneyEngine.adjustBankBalance(newReceipt.amount);
         if (newReceipt.bankAccountId) {
           const updatedBanks = bankAccounts.map((b) =>
             b.id === newReceipt.bankAccountId
-              ? { ...b, balance: b.balance + newReceipt.amountReceived }
+              ? { ...b, balance: b.balance + newReceipt.amount }
               : b
           );
           setBankAccounts(updatedBanks);
@@ -1339,7 +1514,8 @@ export default function App() {
         debitAccountName: newReceipt.paymentMethod === 'CASH' ? 'Caixa Geral' : 'Depósitos à Ordem',
         creditAccount: '21.1',
         creditAccountName: 'Clientes Conta Corrente',
-        amount: newReceipt.amountReceived,
+        amount: newReceipt.amount,
+        currency: tenant.currency,
         docNumber: newReceipt.receiptNumber,
       });
     }
@@ -1347,7 +1523,7 @@ export default function App() {
     syncStateFromEngines();
     setToastMessage({
       title: `Recibo ${newReceipt.receiptNumber} Emitido`,
-      desc: `Recebimento de ${newReceipt.amountReceived.toLocaleString()} ${tenant.currency} registado com sucesso.`,
+      desc: `Recebimento de ${newReceipt.amount.toLocaleString()} ${tenant.currency} registado com sucesso.`,
       type: 'success',
     });
     setTimeout(() => setToastMessage(null), 4000);
@@ -1362,7 +1538,7 @@ export default function App() {
         ? {
             ...r,
             status: 'CANCELLED' as const,
-            cancellationReason: reason,
+            cancelReason: reason,
             cancelledAt: new Date().toISOString(),
             cancelledBy: currentUser.name,
           }
@@ -1377,18 +1553,18 @@ export default function App() {
       if (target.customerId) {
         const cust = customers.find((c) => c.id === target.customerId);
         if (cust) {
-          cust.currentBalance += target.amountReceived;
+          cust.currentBalance += target.amount;
           orchestrator.moneyEngine.upsertCustomer(cust);
         }
       }
       if (target.paymentMethod === 'CASH') {
-        orchestrator.moneyEngine.adjustCashBalance(-target.amountReceived);
+        orchestrator.moneyEngine.adjustCashBalance(-target.amount);
       } else {
-        orchestrator.moneyEngine.adjustBankBalance(-target.amountReceived);
+        orchestrator.moneyEngine.adjustBankBalance(-target.amount);
         if (target.bankAccountId) {
           const updatedBanks = bankAccounts.map((b) =>
             b.id === target.bankAccountId
-              ? { ...b, balance: Math.max(0, b.balance - target.amountReceived) }
+              ? { ...b, balance: Math.max(0, b.balance - target.amount) }
               : b
           );
           setBankAccounts(updatedBanks);
@@ -1431,19 +1607,19 @@ export default function App() {
       if (newDisbursement.supplierId) {
         const sup = suppliers.find((s) => s.id === newDisbursement.supplierId);
         if (sup) {
-          sup.currentBalance = Math.max(0, sup.currentBalance - newDisbursement.amountPaid);
+          sup.currentBalance = Math.max(0, sup.currentBalance - newDisbursement.amount);
           orchestrator.moneyEngine.upsertSupplier(sup);
         }
       }
 
       if (newDisbursement.paymentMethod === 'CASH') {
-        orchestrator.moneyEngine.adjustCashBalance(-newDisbursement.amountPaid);
+        orchestrator.moneyEngine.adjustCashBalance(-newDisbursement.amount);
       } else {
-        orchestrator.moneyEngine.adjustBankBalance(-newDisbursement.amountPaid);
+        orchestrator.moneyEngine.adjustBankBalance(-newDisbursement.amount);
         if (newDisbursement.bankAccountId) {
           const updatedBanks = bankAccounts.map((b) =>
             b.id === newDisbursement.bankAccountId
-              ? { ...b, balance: Math.max(0, b.balance - newDisbursement.amountPaid) }
+              ? { ...b, balance: Math.max(0, b.balance - newDisbursement.amount) }
               : b
           );
           setBankAccounts(updatedBanks);
@@ -1461,7 +1637,8 @@ export default function App() {
         debitAccountName: 'Fornecedores Conta Corrente',
         creditAccount: newDisbursement.paymentMethod === 'CASH' ? '43.1' : '45.1',
         creditAccountName: newDisbursement.paymentMethod === 'CASH' ? 'Caixa Geral' : 'Depósitos à Ordem',
-        amount: newDisbursement.amountPaid,
+        amount: newDisbursement.amount,
+        currency: tenant.currency,
         docNumber: newDisbursement.disbursementNumber,
       });
     }
@@ -1470,7 +1647,7 @@ export default function App() {
     setToastMessage({
       title: `Ordem de Pagamento ${newDisbursement.disbursementNumber} Registada`,
       desc: newDisbursement.status === 'PAID'
-        ? `Saída de ${newDisbursement.amountPaid.toLocaleString()} ${tenant.currency} liquidada.`
+        ? `Saída de ${newDisbursement.amount.toLocaleString()} ${tenant.currency} liquidada.`
         : `Pagamento registado como pendente de aprovação.`,
       type: newDisbursement.status === 'PAID' ? 'success' : 'info',
     });
@@ -1486,6 +1663,7 @@ export default function App() {
         ? {
             ...d,
             status: 'PAID' as const,
+            approvalStatus: 'APPROVED' as const,
             approvedBy: currentUser.name,
             approvedAt: new Date().toISOString(),
             notes: notes ? `${d.notes || ''} | Aprovado: ${notes}` : d.notes,
@@ -1500,19 +1678,19 @@ export default function App() {
     if (target.supplierId) {
       const sup = suppliers.find((s) => s.id === target.supplierId);
       if (sup) {
-        sup.currentBalance = Math.max(0, sup.currentBalance - target.amountPaid);
+        sup.currentBalance = Math.max(0, sup.currentBalance - target.amount);
         orchestrator.moneyEngine.upsertSupplier(sup);
       }
     }
 
     if (target.paymentMethod === 'CASH') {
-      orchestrator.moneyEngine.adjustCashBalance(-target.amountPaid);
+      orchestrator.moneyEngine.adjustCashBalance(-target.amount);
     } else {
-      orchestrator.moneyEngine.adjustBankBalance(-target.amountPaid);
+      orchestrator.moneyEngine.adjustBankBalance(-target.amount);
       if (target.bankAccountId) {
         const updatedBanks = bankAccounts.map((b) =>
           b.id === target.bankAccountId
-            ? { ...b, balance: Math.max(0, b.balance - target.amountPaid) }
+            ? { ...b, balance: Math.max(0, b.balance - target.amount) }
             : b
         );
         setBankAccounts(updatedBanks);
@@ -1525,7 +1703,7 @@ export default function App() {
     syncStateFromEngines();
     setToastMessage({
       title: `Pagamento ${target.disbursementNumber} Aprovado & Liquidado`,
-      desc: `Valor de ${target.amountPaid.toLocaleString()} ${tenant.currency} debitado da conta.`,
+      desc: `Valor de ${target.amount.toLocaleString()} ${tenant.currency} debitado da conta.`,
       type: 'success',
     });
     setTimeout(() => setToastMessage(null), 4000);
@@ -1539,8 +1717,9 @@ export default function App() {
       d.id === disbursementId
         ? {
             ...d,
-            status: 'REJECTED' as const,
-            rejectionReason: reason,
+            status: 'PENDING' as const,
+            approvalStatus: 'REJECTED' as const,
+            cancelReason: reason,
           }
         : d
     );
@@ -1567,7 +1746,7 @@ export default function App() {
         ? {
             ...d,
             status: 'CANCELLED' as const,
-            cancellationReason: reason,
+            cancelReason: reason,
             cancelledAt: new Date().toISOString(),
             cancelledBy: currentUser.name,
           }
@@ -1582,18 +1761,18 @@ export default function App() {
       if (target.supplierId) {
         const sup = suppliers.find((s) => s.id === target.supplierId);
         if (sup) {
-          sup.currentBalance += target.amountPaid;
+          sup.currentBalance += target.amount;
           orchestrator.moneyEngine.upsertSupplier(sup);
         }
       }
       if (target.paymentMethod === 'CASH') {
-        orchestrator.moneyEngine.adjustCashBalance(target.amountPaid);
+        orchestrator.moneyEngine.adjustCashBalance(target.amount);
       } else {
-        orchestrator.moneyEngine.adjustBankBalance(target.amountPaid);
+        orchestrator.moneyEngine.adjustBankBalance(target.amount);
         if (target.bankAccountId) {
           const updatedBanks = bankAccounts.map((b) =>
             b.id === target.bankAccountId
-              ? { ...b, balance: b.balance + target.amountPaid }
+              ? { ...b, balance: b.balance + target.amount }
               : b
           );
           setBankAccounts(updatedBanks);
@@ -1672,7 +1851,7 @@ export default function App() {
           closedAt: now.toISOString(),
           physicalCountedCash: params.physicalCountedCash,
           difference: params.difference,
-          differenceReason: params.justification,
+          differenceJustification: params.justification,
           authorizedBy: params.authorizedBy || currentUser.name,
           notes: params.notes,
         };
@@ -1693,11 +1872,12 @@ export default function App() {
         timestamp: now.toISOString(),
         date: now.toISOString().split('T')[0],
         time: now.toTimeString().split(' ')[0].slice(0, 5),
-        type: isPositive ? 'INFLOW' : 'OUTFLOW',
-        category: 'AJUSTE',
+        type: 'ADJUSTMENT',
+        category: 'DISCREPANCY_ADJUSTMENT',
         description: `Ajuste autorizado fecho de turno: ${params.justification || 'Conferência física'}`,
         amount: Math.abs(params.difference),
         paymentMethod: 'CASH',
+        operatorId: currentUser.id,
         operatorName: currentUser.name,
         authorizedBy: params.authorizedBy || currentUser.name,
         shiftId: params.shiftId,
@@ -1729,16 +1909,20 @@ export default function App() {
     const now = new Date();
     const newShift: CashShiftRecord = {
       id: `shift_${Date.now()}`,
+      shiftNumber: cashShifts.length + 1,
+      terminalId: 'POS-01',
+      operatorId: currentUser.id,
       operatorName: params.operatorName || currentUser.name,
-      terminal: 'POS 01 - Caixa Principal',
       openedAt: now.toISOString(),
       openingFloat: params.openingFloat,
-      expectedCash: params.openingFloat,
+      totalInflows: params.openingFloat,
+      totalOutflows: 0,
+      totalSalesCash: 0,
+      totalCard: 0,
+      totalTransfers: 0,
+      systemExpectedCash: params.openingFloat,
       physicalCountedCash: 0,
       difference: 0,
-      totalSales: 0,
-      totalCashIn: params.openingFloat,
-      totalCashOut: 0,
       status: 'OPEN',
       notes: params.notes,
     };
@@ -1756,10 +1940,11 @@ export default function App() {
       date: now.toISOString().split('T')[0],
       time: now.toTimeString().split(' ')[0].slice(0, 5),
       type: 'OPENING_FLOAT',
-      category: 'FUNDO_CAIXA',
+      category: 'OPENING_FLOAT',
       description: `Fundo de Caixa / Abertura de Turno - ${params.operatorName || currentUser.name}`,
       amount: params.openingFloat,
       paymentMethod: 'CASH',
+      operatorId: currentUser.id,
       operatorName: params.operatorName || currentUser.name,
       shiftId: newShift.id,
       balanceAfter: orchestrator.moneyEngine.getCashBalance() + params.openingFloat,
@@ -1815,10 +2000,11 @@ export default function App() {
       date: now.toISOString().split('T')[0],
       time: now.toTimeString().split(' ')[0].slice(0, 5),
       type: 'TRANSFER',
-      category: 'TRANSFERENCIA',
+      category: 'BANK_TRANSFER',
       description: `Transferência (${params.sourceType === 'CASH' ? 'Caixa' : 'Banco'} ➔ ${params.targetType === 'CASH' ? 'Caixa' : 'Banco'}): ${params.justification}`,
       amount: params.amount,
       paymentMethod: params.sourceType === 'CASH' ? 'CASH' : 'BANK_TRANSFER',
+      operatorId: currentUser.id,
       operatorName: currentUser.name,
       balanceAfter: orchestrator.moneyEngine.getCashBalance(),
     };
@@ -2075,6 +2261,23 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'CUSTOMERS' && (
+              <CustomersView
+                customers={customers}
+                documents={documents}
+                movements={customerMovements}
+                bankAccounts={bankAccounts}
+                tenant={tenant}
+                currency={tenant.currency}
+                currentUser={currentUser}
+                onSaveCustomer={handleSaveCustomer}
+                onToggleCustomerStatus={handleToggleCustomerStatus}
+                onReceiveCustomerPayment={handleReceiveCustomerLedgerPayment}
+                subView={activeSubView}
+                onViewDocument={setSelectedDocForModal}
+              />
+            )}
+
             {activeTab === 'SUPPLIERS' && (
               <SuppliersView
                 suppliers={suppliers}
@@ -2148,6 +2351,31 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'REPORTS' && (
+              <ReportsView
+                documents={documents}
+                products={products}
+                customers={customers}
+                suppliers={suppliers}
+                purchases={purchases}
+                receipts={receipts}
+                disbursements={disbursements}
+                cashMovements={cashMovements}
+                cashShifts={cashShifts}
+                bankAccounts={bankAccounts}
+                auditRecords={auditRecords}
+                systemEvents={events}
+                customerMovements={customerMovements}
+                supplierMovements={supplierMovements}
+                stockMovements={movements}
+                series={seriesList}
+                tenant={tenant}
+                currentUser={currentUser}
+                users={initialUsers}
+                initialSubView={activeSubView}
+              />
+            )}
+
             {activeTab === 'SETTINGS' && (
               <TenantSettingsView
                 tenant={tenant}
@@ -2159,6 +2387,25 @@ export default function App() {
                   setToastMessage({
                     title: 'Definições Guardadas',
                     desc: 'Configurações do estabelecimento atualizadas com sucesso.',
+                    type: 'success',
+                  });
+                  setTimeout(() => setToastMessage(null), 3000);
+                }}
+              />
+            )}
+
+            {activeTab === 'BILLING' && (
+              <BillingView
+                tenant={tenant}
+                currentUser={currentUser}
+                subView={activeSubView}
+                currency={tenant.currency}
+                onUpdateTenant={(updated) => {
+                  setTenant((prev) => ({ ...prev, ...updated }));
+                  orchestrator.updateTenant(tenant.id, updated, currentUser);
+                  setToastMessage({
+                    title: 'Subscrição & Licença Atualizadas',
+                    desc: 'Configuração contratual gravada com sucesso.',
                     type: 'success',
                   });
                   setTimeout(() => setToastMessage(null), 3000);
@@ -2220,6 +2467,7 @@ export default function App() {
         onNavigate={(viewId) => {
           if (viewId === 'pos') setActiveTab('POS');
           else if (viewId === 'stock') setActiveTab('STOCK');
+          else if (viewId === 'customers') setActiveTab('CUSTOMERS');
           else if (viewId === 'suppliers') setActiveTab('SUPPLIERS');
           else if (viewId === 'treasury') setActiveTab('TREASURY');
           else if (viewId === 'hr') setActiveTab('HR');

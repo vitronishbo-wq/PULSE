@@ -213,13 +213,60 @@ export interface ImpersonationSession {
 export interface Customer {
   id: string;
   name: string;
+  tradeName?: string;
   taxId: string; // NIF / Contribuinte
+  fiscalCountry?: FiscalCountry;
+  taxRegime?: 'GERAL' | 'SIMPLIFICADO' | 'ISENTO';
+  taxExemptionReason?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
+  website?: string;
+  contactPerson?: string;
   address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
   creditLimit: number;
   currentBalance: number; // Positive = owes money (AR)
+  paymentTerms?: string; // 'Pronto Pagamento' | '15 Dias' | '30 Dias Líquido' | '60 Dias Líquido' | '90 Dias'
   priceTable?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CustomerMovementType =
+  | 'SALES_INVOICE'
+  | 'RECEIPT'
+  | 'CREDIT_NOTE'
+  | 'DEBIT_NOTE'
+  | 'OPENING_BALANCE'
+  | 'ADJUSTMENT';
+
+export interface CustomerLedgerMovement {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerTaxId: string;
+  date: string;
+  dueDate?: string;
+  type: CustomerMovementType;
+  docNumber: string; // Ex: 'FT 2026/001', 'RC 2026/001', 'NC 2026/001'
+  docId?: string;
+  description: string;
+  debit: number; // Faturas / Aumenta valor a receber
+  credit: number; // Recibos / Notas de Crédito (amortização / redução)
+  runningBalance: number; // Saldo progressivo acumulado
+  paymentMethod?: PaymentMethod;
+  bankAccountRef?: string;
+  receiptNumber?: string;
+  status: 'PENDING' | 'SETTLED' | 'CANCELLED';
+  matchedDocId?: string;
+  notes?: string;
+  registeredBy: string;
+  createdAt: string;
 }
 
 export interface SupplierProductItem {

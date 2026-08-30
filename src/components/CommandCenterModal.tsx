@@ -238,6 +238,17 @@ export const CommandCenterModal: React.FC<CommandCenterModalProps> = ({
       },
     },
     {
+      id: 'cmd-customers',
+      label: 'Clientes, Histórico de Compras & Conta-Corrente',
+      shortcut: 'CLI',
+      icon: Users,
+      action: () => {
+        normalizer.ingestRawInput('/clientes', 'SHORTCUT_TRIGGER');
+        onClose();
+        onNavigate('customers');
+      },
+    },
+    {
       id: 'cmd-treasury',
       label: 'Tesouraria & Diário de Caixa',
       shortcut: 'TES',

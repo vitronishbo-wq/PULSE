@@ -11,12 +11,15 @@ export interface NavLeafItem {
     | 'SERVICES_BILLING'
     | 'DOCS'
     | 'STOCK'
+    | 'CUSTOMERS'
     | 'SUPPLIERS'
     | 'TREASURY'
     | 'HR'
     | 'EVENTBUS'
     | 'FISCAL'
-    | 'SETTINGS';
+    | 'REPORTS'
+    | 'SETTINGS'
+    | 'BILLING';
   subView?: string;
   badge?: string;
   action?: () => void;
@@ -280,21 +283,21 @@ export function resolveNavigationTree(
     clientesItems.push({
       id: 'leaf_customers_list',
       label: 'Ficheiro de Clientes & NIF',
-      targetTab: 'DOCS',
-      subView: 'CUSTOMERS',
+      targetTab: 'CUSTOMERS',
+      subView: 'DIRECTORY',
     });
     clientesItems.push({
       id: 'leaf_customers_history',
       label: 'Histórico de Compras',
-      targetTab: 'DOCS',
-      subView: 'CUSTOMER_PURCHASES',
+      targetTab: 'CUSTOMERS',
+      subView: 'PURCHASES',
     });
     if (isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
       clientesItems.push({
         id: 'leaf_customers_debts',
         label: 'Conta-Corrente / Dívidas',
-        targetTab: 'TREASURY',
-        subView: 'RECEIVABLES',
+        targetTab: 'CUSTOMERS',
+        subView: 'LEDGER',
       });
     }
   }
@@ -316,49 +319,84 @@ export function resolveNavigationTree(
     });
   }
 
-  // 8. RELATÓRIOS (Vendas, Financeiro, Stock, Fiscal)
-  const relatoriosItems: NavLeafItem[] = [];
+  // 8. RELATÓRIOS (Vendas, Financeiro, Stock, Fiscal, Auditoria)
+  const relatoriosVendasItems: NavLeafItem[] = [];
+  const relatoriosFinanceiroItems: NavLeafItem[] = [];
+  const relatoriosStockItems: NavLeafItem[] = [];
+  const relatoriosFiscalItems: NavLeafItem[] = [];
+  const relatoriosAuditoriaItems: NavLeafItem[] = [];
+
   if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'seller', 'cashier'])) {
-    relatoriosItems.push({
-      id: 'leaf_reports_sales',
-      label: 'Vendas',
-      targetTab: 'DOCS',
-      subView: 'ALL',
-    });
-  }
-  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'cashier'])) {
-    relatoriosItems.push({
-      id: 'leaf_reports_financial',
-      label: 'Financeiro',
-      targetTab: 'TREASURY',
-      subView: 'BALANCES',
-    });
-  }
-  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'seller'])) {
-    relatoriosItems.push({
-      id: 'leaf_reports_stock',
-      label: 'Stock',
-      targetTab: 'STOCK',
-      subView: 'STOCK_REPORT',
-    });
-  }
-  if (isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
-    relatoriosItems.push({
-      id: 'leaf_reports_fiscal',
-      label: 'Fiscal',
-      targetTab: 'FISCAL',
-      badge: 'AGT',
-    });
+    relatoriosVendasItems.push(
+      { id: 'leaf_rep_sales_period', label: 'Vendas por período', targetTab: 'REPORTS', subView: 'SALES_PERIOD' },
+      { id: 'leaf_rep_sales_product', label: 'Vendas por produto / categoria', targetTab: 'REPORTS', subView: 'SALES_PRODUCT' },
+      { id: 'leaf_rep_sales_operator', label: 'Vendas por operador', targetTab: 'REPORTS', subView: 'SALES_OPERATOR' },
+      { id: 'leaf_rep_sales_terminal', label: 'Vendas por terminal / turno', targetTab: 'REPORTS', subView: 'SALES_TERMINAL' },
+      { id: 'leaf_rep_sales_customer', label: 'Vendas por cliente', targetTab: 'REPORTS', subView: 'SALES_CUSTOMER' },
+      { id: 'leaf_rep_sales_docs', label: 'Documentos emitidos', targetTab: 'REPORTS', subView: 'SALES_DOCS' },
+      { id: 'leaf_rep_sales_returns', label: 'Devoluções / cancelamentos', targetTab: 'REPORTS', subView: 'SALES_RETURNS' },
+      { id: 'leaf_rep_sales_payments', label: 'Meios de pagamento', targetTab: 'REPORTS', subView: 'SALES_PAYMENTS' }
+    );
   }
 
-  // 9. CONFIGURAÇÕES (Apenas opções permitidas ao operador/tenant)
+  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'cashier'])) {
+    relatoriosFinanceiroItems.push(
+      { id: 'leaf_rep_fin_receipts', label: 'Recebimentos', targetTab: 'REPORTS', subView: 'FINANCIAL_RECEIPTS' },
+      { id: 'leaf_rep_fin_payments', label: 'Pagamentos', targetTab: 'REPORTS', subView: 'FINANCIAL_PAYMENTS' },
+      { id: 'leaf_rep_fin_cashflow', label: 'Fluxo de caixa', targetTab: 'REPORTS', subView: 'FINANCIAL_CASHFLOW' },
+      { id: 'leaf_rep_fin_balances', label: 'Saldos', targetTab: 'REPORTS', subView: 'FINANCIAL_BALANCES' },
+      { id: 'leaf_rep_fin_receivables', label: 'Contas a receber', targetTab: 'REPORTS', subView: 'FINANCIAL_RECEIVABLES' },
+      { id: 'leaf_rep_fin_payables', label: 'Contas a pagar', targetTab: 'REPORTS', subView: 'FINANCIAL_PAYABLES' },
+      { id: 'leaf_rep_fin_margins', label: 'Margem / resultados', targetTab: 'REPORTS', subView: 'FINANCIAL_MARGINS' },
+      { id: 'leaf_rep_fin_movements', label: 'Movimentos por período', targetTab: 'REPORTS', subView: 'FINANCIAL_MOVEMENTS' },
+      { id: 'leaf_rep_fin_export', label: 'Exportação / impressão', targetTab: 'REPORTS', subView: 'FINANCIAL_EXPORT' }
+    );
+  }
+
+  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'seller'])) {
+    relatoriosStockItems.push(
+      { id: 'leaf_rep_stock_current', label: 'Stock atual', targetTab: 'REPORTS', subView: 'STOCK_CURRENT' },
+      { id: 'leaf_rep_stock_in_out', label: 'Entradas / saídas', targetTab: 'REPORTS', subView: 'STOCK_IN_OUT' },
+      { id: 'leaf_rep_stock_inventory', label: 'Inventário', targetTab: 'REPORTS', subView: 'STOCK_INVENTORY' },
+      { id: 'leaf_rep_stock_low', label: 'Produtos com stock baixo', targetTab: 'REPORTS', subView: 'STOCK_LOW' },
+      { id: 'leaf_rep_stock_adjustments', label: 'Movimentos / ajustes', targetTab: 'REPORTS', subView: 'STOCK_ADJUSTMENTS' },
+      { id: 'leaf_rep_stock_valuation', label: 'Valorização de stock', targetTab: 'REPORTS', subView: 'STOCK_VALUATION' }
+    );
+  }
+
+  if (isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
+    relatoriosFiscalItems.push(
+      { id: 'leaf_rep_fiscal_doctypes', label: 'FT / FR / NC', targetTab: 'REPORTS', subView: 'FISCAL_DOC_TYPES' },
+      { id: 'leaf_rep_fiscal_vat', label: 'IVA', targetTab: 'REPORTS', subView: 'FISCAL_VAT' },
+      { id: 'leaf_rep_fiscal_retentions', label: 'Retenções', targetTab: 'REPORTS', subView: 'FISCAL_RETENTIONS' },
+      { id: 'leaf_rep_fiscal_series', label: 'Séries / numeração', targetTab: 'REPORTS', subView: 'FISCAL_SERIES' },
+      { id: 'leaf_rep_fiscal_cancels', label: 'Anulações / correções', targetTab: 'REPORTS', subView: 'FISCAL_CANCELLATIONS' },
+      { id: 'leaf_rep_fiscal_saft', label: 'SAF-T / exportação fiscal', targetTab: 'REPORTS', subView: 'FISCAL_SAFT', badge: 'AGT' }
+    );
+
+    relatoriosAuditoriaItems.push(
+      { id: 'leaf_rep_audit_user_ops', label: 'Operações dos utilizadores', targetTab: 'REPORTS', subView: 'AUDIT_USER_OPS' },
+      { id: 'leaf_rep_audit_changes_cancels', label: 'Alterações / anulações', targetTab: 'REPORTS', subView: 'AUDIT_CHANGES_CANCELS' },
+      { id: 'leaf_rep_audit_system_events', label: 'Eventos do sistema', targetTab: 'REPORTS', subView: 'AUDIT_SYSTEM_EVENTS' },
+      { id: 'leaf_rep_audit_operator_logs', label: 'Registo por operador', targetTab: 'REPORTS', subView: 'AUDIT_OPERATOR_LOGS' },
+      { id: 'leaf_rep_audit_history', label: 'Histórico de alterações', targetTab: 'REPORTS', subView: 'AUDIT_HISTORY' }
+    );
+  }
+
+  // 9. CONFIGURAÇÕES (6 Módulos Operacionais do Estabelecimento)
   const configuracoesItems: NavLeafItem[] = [];
-  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'cashier', 'seller'])) {
+  if (isPermitted(['platform_admin', 'tenant_owner', 'manager', 'cashier', 'seller', 'viewer'])) {
     configuracoesItems.push({
       id: 'leaf_settings_company',
       label: 'Definições do Estabelecimento',
       targetTab: 'SETTINGS',
       subView: 'GENERAL',
+    });
+    configuracoesItems.push({
+      id: 'leaf_settings_printers',
+      label: 'Impressoras & Recibos',
+      targetTab: 'SETTINGS',
+      subView: 'PRINTERS',
     });
     if (isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
       configuracoesItems.push({
@@ -370,10 +408,70 @@ export function resolveNavigationTree(
     }
     configuracoesItems.push({
       id: 'leaf_settings_devices',
-      label: 'Séries / Terminal / Dispositivos',
+      label: 'Terminais & Dispositivos',
       targetTab: 'SETTINGS',
       subView: 'DEVICES',
     });
+    configuracoesItems.push({
+      id: 'leaf_settings_payments',
+      label: 'Meios de Pagamento',
+      targetTab: 'SETTINGS',
+      subView: 'PAYMENTS',
+    });
+    configuracoesItems.push({
+      id: 'leaf_settings_preferences',
+      label: 'Preferências Operacionais',
+      targetTab: 'SETTINGS',
+      subView: 'PREFERENCES',
+    });
+  }
+
+  // 10. SUBSCRIÇÃO & FATURAÇÃO (Governança Comercial, Licenças & Faturas)
+  const billingSubscriptionItems: NavLeafItem[] = [];
+  const billingFinanceItems: NavLeafItem[] = [];
+  if (isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
+    billingSubscriptionItems.push(
+      {
+        id: 'leaf_billing_subscription',
+        label: 'Gestão da Subscrição',
+        targetTab: 'BILLING',
+        subView: 'SUBSCRIPTION',
+        badge: 'Ativa',
+      },
+      {
+        id: 'leaf_billing_plans',
+        label: 'Planos & Módulos Contratados',
+        targetTab: 'BILLING',
+        subView: 'PLANS',
+      },
+      {
+        id: 'leaf_billing_licenses',
+        label: 'Matriz de Licenças RSA & Hardware',
+        targetTab: 'BILLING',
+        subView: 'LICENSES',
+      }
+    );
+
+    billingFinanceItems.push(
+      {
+        id: 'leaf_billing_invoices',
+        label: 'Histórico de Faturas & Recibos',
+        targetTab: 'BILLING',
+        subView: 'INVOICES',
+      },
+      {
+        id: 'leaf_billing_calculator',
+        label: 'Simulador de Upgrades & Preços',
+        targetTab: 'BILLING',
+        subView: 'CALCULATOR',
+      },
+      {
+        id: 'leaf_billing_payment_methods',
+        label: 'Meios de Pagamento & Dados Fiscais',
+        targetTab: 'BILLING',
+        subView: 'PAYMENT_METHODS',
+      }
+    );
   }
 
   // Assemble full tree, filtering out empty submodules and root modules
@@ -468,9 +566,29 @@ export function resolveNavigationTree(
       iconName: 'BarChart3',
       submodules: [
         {
-          id: 'sub_relatorios_main',
-          label: 'Vendas, Financeiro & Fiscal',
-          items: relatoriosItems,
+          id: 'sub_relatorios_vendas',
+          label: 'Vendas',
+          items: relatoriosVendasItems,
+        },
+        {
+          id: 'sub_relatorios_financeiro',
+          label: 'Financeiro',
+          items: relatoriosFinanceiroItems,
+        },
+        {
+          id: 'sub_relatorios_stock',
+          label: 'Stock',
+          items: relatoriosStockItems,
+        },
+        {
+          id: 'sub_relatorios_fiscal',
+          label: 'Fiscal',
+          items: relatoriosFiscalItems,
+        },
+        {
+          id: 'sub_relatorios_auditoria',
+          label: 'Auditoria',
+          items: relatoriosAuditoriaItems,
         },
       ],
     },
@@ -483,6 +601,23 @@ export function resolveNavigationTree(
           id: 'sub_configuracoes_main',
           label: 'Opções do Estabelecimento',
           items: configuracoesItems,
+        },
+      ],
+    },
+    {
+      id: 'root_billing',
+      label: 'SUBSCRIÇÃO & FATURAÇÃO',
+      iconName: 'CreditCard',
+      submodules: [
+        {
+          id: 'sub_billing_subscription',
+          label: 'Subscrição & Plano',
+          items: billingSubscriptionItems,
+        },
+        {
+          id: 'sub_billing_finance',
+          label: 'Faturas & Pagamentos',
+          items: billingFinanceItems,
         },
       ],
     },

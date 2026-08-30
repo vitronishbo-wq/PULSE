@@ -16,6 +16,7 @@ import {
   Sparkles,
   Truck,
   BarChart3,
+  CreditCard,
 } from 'lucide-react';
 import { TenantProfile, User } from '../types/pulse';
 import { resolveNavigationTree, NavRootModule } from '../utils/navigationResolver';
@@ -123,6 +124,7 @@ export const CompactTreeSidebar: React.FC<CompactTreeSidebarProps> = ({
     Globe,
     BarChart3,
     Settings,
+    CreditCard,
   };
 
   // Content rendering

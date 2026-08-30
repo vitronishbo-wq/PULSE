@@ -20,35 +20,49 @@ import {
   FolderOpen,
   FileCode,
   Sparkles,
-  UtensilsCrossed,
-  Pill,
-  Shirt,
-  Briefcase,
-  ShoppingCart,
-  Maximize2,
-  Minimize2,
   RefreshCw,
-  Clock,
-  ShieldCheck,
-  Check,
   Zap,
   Keyboard,
   Mic,
-  Scan,
+  DollarSign,
+  Landmark,
+  Globe,
+  Coins,
+  Percent,
+  Sliders,
+  Users,
+  Activity,
+  CreditCard,
+  FileText,
+  History,
+  Tag,
+  ArrowRight,
+  Shield,
+  Monitor,
+  Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   TenantProfile,
-  TenantFeatureFlags,
   User,
-  SystemEvent,
-  AuditRecord,
-  TestSuiteReport,
   BusinessSegment,
 } from '../types/pulse';
 import { Orchestrator } from '../engines/Orchestrator';
-import { InputNormalizer } from '../engines/InputNormalizer';
-import { BusinessProfilesView } from './BusinessProfilesView';
 import { TenantProvisioningWizard } from './TenantProvisioningWizard';
+
+// Modular Sections for all 12 Roots
+import { AdminTenantsSection } from './admin/AdminTenantsSection';
+import { AdminProvisioningSection } from './admin/AdminProvisioningSection';
+import { AdminLicensesSection } from './admin/AdminLicensesSection';
+import { AdminModulesSection } from './admin/AdminModulesSection';
+import { AdminBillingSection } from './admin/AdminBillingSection';
+import { AdminSettlementsSection } from './admin/AdminSettlementsSection';
+import { AdminTelemetrySection } from './admin/AdminTelemetrySection';
+import { AdminAuditSection } from './admin/AdminAuditSection';
+import { AdminDiagnosticsSection } from './admin/AdminDiagnosticsSection';
+import { AdminInputUniversalSection } from './admin/AdminInputUniversalSection';
+import { AdminPlatformConfigSection } from './admin/AdminPlatformConfigSection';
+import { AdminOperationsSection } from './admin/AdminOperationsSection';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -75,16 +89,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [mfaCode, setMfaCode] = useState('948201');
   const [authError, setAuthError] = useState('');
 
-  // VS Code Hierarchical Tree State
+  // VS Code Hierarchical Tree State: 12 Roots
   const [rootExpanded, setRootExpanded] = useState(true);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({
     '01_tenants': true,
-    '02_segments': true,
-    '03_licenses': true,
-    '04_modules': false,
-    '05_usage': false,
-    '06_events_audit': false,
-    '07_tests': false,
+    '02_profiles_provisioning': true,
+    '03_licenses_matrix': false,
+    '04_capabilities_flags': false,
+    '05_billing_pricing': false,
+    '06_payments_settlements': false,
+    '07_telemetry_usage': false,
+    '08_eventbus_audit': false,
+    '09_diagnostics_tests': false,
+    '10_input_universal': false,
+    '11_platform_configuration': false,
+    '12_platform_operations': false,
   });
 
   const [activeLeafId, setActiveLeafId] = useState<string>('tenants_directory');
@@ -92,26 +111,15 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   // Tenants Data
   const [tenants, setTenants] = useState<TenantProfile[]>(orchestrator.getAllTenants());
-  const [selectedTenantForSegment, setSelectedTenantForSegment] = useState<string>(
-    orchestrator.activeTenantId
-  );
 
   // Impersonation modal state
   const [impersonateTarget, setImpersonateTarget] = useState<TenantProfile | null>(null);
   const [impersonationReason, setImpersonationReason] = useState('');
   const [impersonationError, setImpersonationError] = useState('');
 
-  // Selected event/audit drawer
-  const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
-  const [selectedAudit, setSelectedAudit] = useState<AuditRecord | null>(null);
-
   // Provisioning Wizard modal state
   const [showProvisioningWizard, setShowProvisioningWizard] = useState(false);
   const [provisioningSegment, setProvisioningSegment] = useState<BusinessSegment>('RESTAURANT_BAR');
-
-  // Test Suite execution state
-  const [testReport, setTestReport] = useState<TestSuiteReport | null>(null);
-  const [isRunningTests, setIsRunningTests] = useState(false);
 
   if (!isOpen) return null;
 
@@ -123,24 +131,34 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setRootExpanded(true);
     setExpandedNodes({
       '01_tenants': true,
-      '02_segments': true,
-      '03_licenses': true,
-      '04_modules': true,
-      '05_usage': true,
-      '06_events_audit': true,
-      '07_tests': true,
+      '02_profiles_provisioning': true,
+      '03_licenses_matrix': true,
+      '04_capabilities_flags': true,
+      '05_billing_pricing': true,
+      '06_payments_settlements': true,
+      '07_telemetry_usage': true,
+      '08_eventbus_audit': true,
+      '09_diagnostics_tests': true,
+      '10_input_universal': true,
+      '11_platform_configuration': true,
+      '12_platform_operations': true,
     });
   };
 
   const collapseAll = () => {
     setExpandedNodes({
       '01_tenants': false,
-      '02_segments': false,
-      '03_licenses': false,
-      '04_modules': false,
-      '05_usage': false,
-      '06_events_audit': false,
-      '07_tests': false,
+      '02_profiles_provisioning': false,
+      '03_licenses_matrix': false,
+      '04_capabilities_flags': false,
+      '05_billing_pricing': false,
+      '06_payments_settlements': false,
+      '07_telemetry_usage': false,
+      '08_eventbus_audit': false,
+      '09_diagnostics_tests': false,
+      '10_input_universal': false,
+      '11_platform_configuration': false,
+      '12_platform_operations': false,
     });
   };
 
@@ -170,57 +188,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  const handleToggleFeatureFlag = (
-    tenantId: string,
-    flagKey: keyof TenantFeatureFlags,
-    currentValue: boolean
-  ) => {
-    orchestrator.updateTenantFeatureFlags(tenantId, { [flagKey]: !currentValue }, currentUser);
-    setTenants(orchestrator.getAllTenants());
-  };
-
-  const handleRenewLicense = (tenantId: string, months: number = 12) => {
-    const target = orchestrator.getTenant(tenantId);
-    if (!target) return;
-
-    const currentExp = target.licenseExpiry ? new Date(target.licenseExpiry) : new Date();
-    const newExp = new Date(currentExp);
-    newExp.setMonth(newExp.getMonth() + months);
-
-    orchestrator.updateTenant(
-      tenantId,
-      {
-        licenseExpiry: newExp.toISOString().split('T')[0],
-        licenseStatus: 'ACTIVE',
-        activeLicense: true,
-      },
-      currentUser
-    );
-
-    setTenants(orchestrator.getAllTenants());
-  };
-
-  const handleSwitchSegment = (tenantId: string, newSegment: BusinessSegment) => {
-    orchestrator.setTenantBusinessSegment(tenantId, newSegment, currentUser);
-    setTenants(orchestrator.getAllTenants());
-    if (tenantId === orchestrator.activeTenantId) {
-      onTenantSwitch(tenantId);
-    }
-  };
-
-  const handleToggleTenantStatus = (tenantId: string, currentStatus?: string) => {
-    const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    orchestrator.updateTenant(
-      tenantId,
-      {
-        licenseStatus: nextStatus,
-        activeLicense: nextStatus === 'ACTIVE',
-      },
-      currentUser
-    );
-    setTenants(orchestrator.getAllTenants());
-  };
-
   const handleExecuteImpersonation = () => {
     if (!impersonateTarget) return;
     setImpersonationError('');
@@ -242,261 +209,209 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setTenants(orchestrator.getAllTenants());
   };
 
-  const handleRunTests = () => {
-    setIsRunningTests(true);
-    setTimeout(() => {
-      const report = orchestrator.runVerificationTestSuite(currentUser);
-      setTestReport(report);
-      setIsRunningTests(false);
-    }, 250);
+  const handleRefreshData = () => {
+    setTenants(orchestrator.getAllTenants());
   };
 
-  const allEvents = orchestrator.eventBus.getHistory();
-  const allAuditRecords = orchestrator.auditLedger.getRecords();
-  const metrics = orchestrator.getPlatformMetrics();
-  const errorsLog = orchestrator.getErrorsLog();
-
-  const segmentDefinitions: {
-    segment: BusinessSegment;
-    title: string;
-    icon: any;
-    color: string;
-    description: string;
-    features: string[];
-  }[] = [
-    {
-      segment: 'RESTAURANT_BAR',
-      title: 'Restaurante & Bar / Cafetaria',
-      icon: UtensilsCrossed,
-      color: 'text-amber-400',
-      description: 'Gestão de Mesas, Pedidos Cozinha KDS, Divisão de Conta e Fichas Técnicas (BOM).',
-      features: ['Mesas 1..12 & Balcão', 'Envio Automático KDS Cozinha/Bar', 'Explosão de Matéria-Prima (BOM)', 'Impressão de Comanda de Bar'],
-    },
-    {
-      segment: 'PHARMACY',
-      title: 'Farmácia & Saúde',
-      icon: Pill,
-      color: 'text-rose-400',
-      description: 'Rastreabilidade de Lotes, Data de Validade, Princípio Ativo e Prescrições.',
-      features: ['Campos Obrigatórios Lote & Validade', 'Alerta de Medicamentos Expirados', 'Isenção Art. 12º (Saúde)', 'Filtro por Princípio Ativo'],
-    },
-    {
-      segment: 'RETAIL_CLOTHING',
-      title: 'Vestuário, Calçado & Moda',
-      icon: Shirt,
-      color: 'text-sky-400',
-      description: 'Matriz bidimensional de Tamanho, Cor, Coleção e Código de Barras EAN.',
-      features: ['Grade de Tamanhos (S/M/L/XL / 36-44)', 'Variações de Cor & Coleção', 'Etiquetagem de Saldos', 'Trocas e Devoluções'],
-    },
-    {
-      segment: 'SERVICES',
-      title: 'Prestação de Serviços & Consultoria',
-      icon: Briefcase,
-      color: 'text-purple-400',
-      description: 'Oculta armazém físico, ativa cálculo automático de Retenção na Fonte (6.5%).',
-      features: ['Retenção na Fonte 6.5% (AGT)', 'Honorários & Horas Faturáveis', 'Propostas & Contratos de Serviço', 'Sem Bloqueio de Stock Físico'],
-    },
-    {
-      segment: 'GENERAL_RETAIL',
-      title: 'Retalho Geral & Supermercado',
-      icon: ShoppingCart,
-      color: 'text-emerald-400',
-      description: 'Focado em velocidade de scanner, códigos EAN-13, balança e caixa rápido.',
-      features: ['Leitura Contínua de Barcode', 'Artigos Pesáveis (Balança / kg)', 'Atalhos de Teclado F1..F12', 'Venda Rápida a Dinheiro/TPA'],
-    },
-  ];
-
   return (
-    <div
-      id="modal-platform-control"
-      className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-1 sm:p-3 font-mono text-slate-200"
-    >
-      <div className="bg-[#181818] border border-[#333333] rounded-lg w-full max-w-[1280px] shadow-2xl overflow-hidden flex flex-col h-[94vh]">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-[#181818] border border-[#2d2d2d] rounded-lg shadow-2xl w-full max-w-7xl h-[94vh] flex flex-col overflow-hidden font-mono">
         
-        {/* VS Code Window Titlebar */}
-        <div className="bg-[#1e1e1e] border-b border-[#2d2d2d] px-3 py-2 flex items-center justify-between shrink-0 select-none">
+        {/* TOP BAR / TITLE BAR */}
+        <div className="bg-[#1f1f1f] border-b border-[#2d2d2d] px-4 py-2.5 flex items-center justify-between text-xs select-none">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 mr-2">
-              <span className="w-3 h-3 rounded-full bg-[#ff5f56] inline-block cursor-pointer" onClick={onClose} />
-              <span className="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block" />
-              <span className="w-3 h-3 rounded-full bg-[#27c93f] inline-block" />
-            </div>
-            <Terminal className="w-3.5 h-3.5 text-[#007acc]" />
-            <span className="text-xs text-slate-300 font-semibold tracking-wide">
-              PULSE.OS — Platform Control Plane [ULCE v2.0]
+            <ShieldAlert className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold text-slate-200 tracking-wider">
+              PULSE.OS // PLATFORM SAAS CONTROL PLANE [ROOT GOVERNANCE]
+            </span>
+            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
+              ULCE v2.0
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            {orchestrator.impersonationSession?.active && (
-              <div className="bg-amber-500/10 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded text-[11px] flex items-center gap-2">
-                <span>Personificando: <strong>{orchestrator.impersonationSession.targetTenantName}</strong></span>
+            {orchestrator.isImpersonating() && (
+              <div className="flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded text-[11px] font-sans animate-pulse">
+                <span>PERSONIFICANDO: <strong>{orchestrator.getActiveTenant().tradeName}</strong></span>
                 <button
                   onClick={handleEndCurrentImpersonation}
-                  className="bg-amber-500 text-slate-950 hover:bg-amber-400 px-1.5 py-0.2 rounded font-bold text-[10px]"
+                  className="bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-amber-400"
                 >
                   Encerrar
                 </button>
               </div>
             )}
+
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded hover:bg-[#2d2d2d] transition-colors"
+              className="text-slate-400 hover:text-white p-1 hover:bg-[#2d2d2d] rounded transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* 1. STAGE: DIALPAD GATEWAY */}
+        {/* STAGE 1: DIALPAD GATEWAY */}
         {stage === 'DIALPAD' && (
-          <div className="p-8 max-w-sm mx-auto text-center space-y-4 my-auto">
-            <div className="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/30 mx-auto flex items-center justify-center text-emerald-400">
-              <Lock className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white uppercase">Gateway de Acesso Administrativo</h4>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Introduza a sequência de serviço <strong>*#7668#</strong> para invocar o painel
+          <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6">
+            <div className="text-center space-y-2 max-w-md">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h2 className="text-base font-bold text-white uppercase tracking-wider">
+                Acesso Restrito ao Kernel da Plataforma
+              </h2>
+              <p className="text-xs text-slate-400">
+                Introduza o código universal de administração (*#7668#) ou PIN de fundação.
               </p>
             </div>
 
-            <div className="bg-[#252526] border border-[#3c3c3c] rounded p-2.5 text-center text-base tracking-widest text-emerald-400 min-h-[42px] flex items-center justify-center">
-              {dialpadInput || '• • • • • • •'}
+            {/* Display Screen */}
+            <div className="w-64 bg-[#111] border border-[#333] rounded p-3 text-center">
+              <span className="font-mono text-lg text-emerald-400 tracking-widest min-h-7 inline-block">
+                {dialpadInput ? dialpadInput.replace(/./g, '•') : '----'}
+              </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 max-w-[220px] mx-auto">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((k) => (
+            {/* Dialpad Matrix */}
+            <div className="grid grid-cols-3 gap-2 w-64">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
                 <button
-                  key={k}
-                  onClick={() => handleDialpadPress(k)}
-                  className="py-2.5 bg-[#252526] hover:bg-[#2d2d2d] active:bg-[#007acc] active:text-white font-bold text-sm rounded border border-[#3c3c3c] transition-colors text-white"
+                  key={digit}
+                  onClick={() => handleDialpadPress(digit)}
+                  className="h-12 bg-[#252526] hover:bg-[#333] text-slate-200 font-mono text-base font-bold rounded border border-[#3c3c3c] active:scale-95 transition-all shadow-sm flex items-center justify-center"
                 >
-                  {k}
+                  {digit}
                 </button>
               ))}
             </div>
 
-            <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2">
-              <button onClick={() => setDialpadInput('')} className="hover:text-slate-300">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setDialpadInput('')}
+                className="text-[11px] text-slate-400 hover:text-slate-200"
+              >
                 Limpar
               </button>
+              <span className="text-slate-600">•</span>
               <button
-                onClick={() => setStage('AUTH_CHALLENGE')}
-                className="text-[#007acc] hover:underline"
+                onClick={() => {
+                  setDialpadInput('*#7668#');
+                  setStage('AUTH_CHALLENGE');
+                }}
+                className="text-[11px] text-emerald-400 hover:underline"
               >
-                Prosseguir para Autenticação &rarr;
+                Atalho Fundador (*#7668#)
               </button>
             </div>
           </div>
         )}
 
-        {/* 2. STAGE: AUTH CHALLENGE */}
+        {/* STAGE 2: 3-FACTOR AUTH CHALLENGE */}
         {stage === 'AUTH_CHALLENGE' && (
-          <div className="p-8 max-w-md mx-auto my-auto w-full">
-            <form onSubmit={handleAuthenticate} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-6 space-y-4 text-xs">
-              <div className="flex items-center gap-2 border-b border-[#2d2d2d] pb-3">
-                <Fingerprint className="w-5 h-5 text-emerald-400" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <div className="bg-[#202020] border border-[#333] rounded-lg p-6 max-w-md w-full space-y-4 shadow-xl">
+              <div className="flex items-center gap-3 border-b border-[#2d2d2d] pb-3">
+                <Fingerprint className="w-6 h-6 text-emerald-400" />
                 <div>
-                  <div className="font-bold text-white">Desafio de Segurança da Plataforma</div>
-                  <div className="text-[10px] text-slate-400">Autenticação MFA + RBAC platform_admin</div>
+                  <h3 className="text-sm font-bold text-white uppercase">Autenticação Mestra de Plataforma</h3>
+                  <p className="text-[11px] text-slate-400">Super-Admin MFA Verification Challenge</p>
                 </div>
               </div>
 
               {authError && (
-                <div className="p-2 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded flex items-center gap-2 text-[11px]">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{authError}</span>
+                <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded">
+                  {authError}
                 </div>
               )}
 
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">E-mail Administrativo</label>
-                <input
-                  type="email"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  className="w-full bg-[#252526] border border-[#3c3c3c] rounded px-3 py-1.5 text-white focus:outline-none focus:border-[#007acc]"
-                  required
-                />
-              </div>
+              <form onSubmit={handleAuthenticate} className="space-y-3 text-xs">
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">E-mail de Administrador</label>
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="w-full bg-[#181818] border border-[#3c3c3c] rounded p-2 text-white font-mono focus:outline-none focus:border-[#007acc]"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Senha Mestra do Fundador / Deus</label>
-                <input
-                  type="password"
-                  placeholder="135790"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full bg-[#252526] border border-[#3c3c3c] rounded px-3 py-1.5 text-white focus:outline-none focus:border-[#007acc] font-mono tracking-widest text-sm"
-                />
-                <span className="text-[10px] text-emerald-400 mt-0.5 block">
-                  Senha Mestra Fundador: <strong className="font-mono">135790</strong> (Acesso irrestrito a todos os tenants)
-                </span>
-              </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Senha Mestra / PIN de Fundação</label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full bg-[#181818] border border-[#3c3c3c] rounded p-2 text-white font-mono focus:outline-none focus:border-[#007acc]"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Dica de ambiente demo: 135790</span>
+                </div>
 
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Código MFA Token (6 dígitos)</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value)}
-                  className="w-full bg-[#252526] border border-[#3c3c3c] rounded px-3 py-1.5 text-white text-center font-bold tracking-widest focus:outline-none focus:border-[#007acc]"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Código MFA TOTP (6 Dígitos)</label>
+                  <input
+                    type="text"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value)}
+                    placeholder="948201"
+                    maxLength={6}
+                    className="w-full bg-[#181818] border border-[#3c3c3c] rounded p-2 text-emerald-400 font-mono tracking-widest text-center text-sm focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
 
-              <div className="pt-2 flex justify-between items-center">
-                <button
-                  type="button"
-                  onClick={() => setStage('DIALPAD')}
-                  className="text-slate-400 hover:text-white"
-                >
-                  &larr; Voltar
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#007acc] hover:bg-[#0062a3] text-white px-4 py-1.5 rounded font-bold transition-colors"
-                >
-                  Validar Credenciais & Entrar
-                </button>
-              </div>
-            </form>
+                <div className="pt-2 flex justify-between items-center">
+                  <button
+                    type="button"
+                    onClick={() => setStage('DIALPAD')}
+                    className="text-slate-400 hover:text-slate-200 text-xs"
+                  >
+                    Voltar ao Dialpad
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded transition-colors text-xs flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Validar & Ingressar
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
-        {/* 3. STAGE: CONTROL PLANE (VS CODE HIERARCHICAL TREE LAYOUT) */}
+        {/* STAGE 3: FULL SAAS CONTROL PLANE (VS CODE TREE ARCHITECTURE) */}
         {stage === 'CONTROL_PLANE' && (
           <div className="flex-1 flex overflow-hidden">
             
-            {/* LEFT SIDEBAR: VS Code Hierarchical Tree Explorer */}
-            <div className="w-80 bg-[#1e1e1e] border-r border-[#2d2d2d] flex flex-col shrink-0">
+            {/* LEFT SIDEBAR: Deeply Collapsible VS Code Explorer */}
+            <div className="w-80 bg-[#181818] border-r border-[#2d2d2d] flex flex-col select-none shrink-0">
               
-              {/* Explorer Title & Actions */}
-              <div className="p-2 border-b border-[#2d2d2d] flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">
-                  EXPLORER: HIERARCHY
-                </span>
+              {/* Explorer Header & Controls */}
+              <div className="p-2 border-b border-[#2d2d2d] flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                <span>EXPLORADOR DO KERNEL</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={expandAll}
-                    title="Expandir Tudo"
-                    className="p-1 hover:bg-[#2d2d2d] rounded text-slate-400 hover:text-white"
+                    title="Expandir Todas as Camadas"
+                    className="p-1 hover:bg-[#252526] rounded text-slate-400 hover:text-white text-[10px]"
                   >
-                    <Maximize2 className="w-3 h-3" />
+                    [+]
                   </button>
                   <button
                     onClick={collapseAll}
-                    title="Recolher Tudo"
-                    className="p-1 hover:bg-[#2d2d2d] rounded text-slate-400 hover:text-white"
+                    title="Recolher Todas as Camadas"
+                    className="p-1 hover:bg-[#252526] rounded text-slate-400 hover:text-white text-[10px]"
                   >
-                    <Minimize2 className="w-3 h-3" />
+                    [-]
                   </button>
                 </div>
               </div>
 
-              {/* Tree Search */}
+              {/* Tree Quick Filter */}
               <div className="p-2 border-b border-[#2d2d2d]">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2" />
@@ -510,7 +425,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               </div>
 
-              {/* Hierarchical Tree View */}
+              {/* Hierarchical Tree View: All 12 Roots */}
               <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 text-xs select-none">
                 
                 {/* ROOT NODE: PULSE-OS-PLATFORM */}
@@ -535,7 +450,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   {rootExpanded && (
                     <div className="pl-3 border-l border-[#333333] ml-2 mt-0.5 space-y-0.5">
                       
-                      {/* LAYER 01: TENANTS */}
+                      {/* ROOT 01: TENANTS */}
                       <div>
                         <div
                           onClick={() => toggleNode('01_tenants')}
@@ -552,39 +467,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                         {expandedNodes['01_tenants'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('tenants_directory')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'tenants_directory'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">tenants_directory.json</span>
-                            </button>
-                            <button
-                              onClick={() => setActiveLeafId('active_context')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'active_context'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <Zap className="w-3 h-3 text-amber-400 shrink-0" />
-                              <span className="truncate">active_tenant.context</span>
-                            </button>
+                            {[
+                              { id: 'tenants_directory', name: 'tenants_directory.json', icon: FileCode },
+                              { id: 'active_context', name: 'active_tenant.context', icon: Zap },
+                              { id: 'tenant_profile', name: 'tenant_profile', icon: Building2 },
+                              { id: 'tenant_status', name: 'tenant_status', icon: Activity },
+                              { id: 'tenant_impersonation', name: 'tenant_impersonation', icon: Key },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 02: BUSINESS SEGMENTS ENGINE */}
+                      {/* ROOT 02: PROFILES & PROVISIONING */}
                       <div>
                         <div
-                          onClick={() => toggleNode('02_segments')}
+                          onClick={() => toggleNode('02_profiles_provisioning')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['02_segments'] ? (
+                          {expandedNodes['02_profiles_provisioning'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -593,40 +506,38 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           <span className="text-[11px] font-semibold">02_PROFILES_PROVISIONING</span>
                         </div>
 
-                        {expandedNodes['02_segments'] && (
+                        {expandedNodes['02_profiles_provisioning'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('business_profiles')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'business_profiles' || activeLeafId === 'segment_matrix'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <Layers className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span className="truncate">business_profiles.table</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setProvisioningSegment('RESTAURANT_BAR');
-                                setShowProvisioningWizard(true);
-                              }}
-                              className="w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] text-emerald-400 hover:bg-[#2a2d2e] hover:text-emerald-300 font-semibold"
-                            >
-                              <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span className="truncate">+ new_tenant_acquisition.flow</span>
-                            </button>
+                            {[
+                              { id: 'business_profiles', name: 'business_profiles.table', icon: Layers },
+                              { id: 'acquisition_flow', name: 'new_tenant_acquisition.flow', icon: Sparkles },
+                              { id: 'provisioning_status', name: 'provisioning_status', icon: CheckCircle2 },
+                              { id: 'profile_change_requests', name: 'profile_change_requests', icon: ArrowRight },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 03: LICENSES & BILLING */}
+                      {/* ROOT 03: LICENSES MATRIX */}
                       <div>
                         <div
-                          onClick={() => toggleNode('03_licenses')}
+                          onClick={() => toggleNode('03_licenses_matrix')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['03_licenses'] ? (
+                          {expandedNodes['03_licenses_matrix'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -635,41 +546,40 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           <span className="text-[11px] font-semibold">03_LICENSES_MATRIX</span>
                         </div>
 
-                        {expandedNodes['03_licenses'] && (
+                        {expandedNodes['03_licenses_matrix'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('licenses_registry')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'licenses_registry'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">rsa_licenses.key</span>
-                            </button>
-                            <button
-                              onClick={() => setActiveLeafId('credentials_hierarchy')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'credentials_hierarchy'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span className="truncate">auth_credentials.rbac</span>
-                            </button>
+                            {[
+                              { id: 'rsa_licenses', name: 'rsa_licenses.key', icon: Key },
+                              { id: 'credentials_rbac', name: 'auth_credentials.rbac', icon: Lock },
+                              { id: 'plans', name: 'plans', icon: Layers },
+                              { id: 'subscriptions', name: 'subscriptions', icon: Clock },
+                              { id: 'renewals', name: 'renewals', icon: RefreshCw },
+                              { id: 'suspension_expiration', name: 'suspension_expiration', icon: ShieldAlert },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 04: CAPABILITIES & MODULES */}
+                      {/* ROOT 04: CAPABILITIES FLAGS */}
                       <div>
                         <div
-                          onClick={() => toggleNode('04_modules')}
+                          onClick={() => toggleNode('04_capabilities_flags')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['04_modules'] ? (
+                          {expandedNodes['04_capabilities_flags'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -678,169 +588,352 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           <span className="text-[11px] font-semibold">04_CAPABILITIES_FLAGS</span>
                         </div>
 
-                        {expandedNodes['04_modules'] && (
+                        {expandedNodes['04_capabilities_flags'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('modules_flags')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'modules_flags'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">feature_flags.matrix</span>
-                            </button>
+                            {[
+                              { id: 'feature_flags', name: 'feature_flags.matrix', icon: FileCode },
+                              { id: 'module_catalog', name: 'module_catalog', icon: Layers },
+                              { id: 'module_dependencies', name: 'module_dependencies', icon: ArrowRight },
+                              { id: 'module_pricing', name: 'module_pricing', icon: Tag },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 05: TELEMETRY & USAGE */}
+                      {/* ROOT 05: BILLING PRICING */}
                       <div>
                         <div
-                          onClick={() => toggleNode('05_usage')}
+                          onClick={() => toggleNode('05_billing_pricing')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['05_usage'] ? (
+                          {expandedNodes['05_billing_pricing'] ? (
+                            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                          <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="text-[11px] font-semibold">05_BILLING_PRICING</span>
+                        </div>
+
+                        {expandedNodes['05_billing_pricing'] && (
+                          <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
+                            {[
+                              { id: 'pricing_matrix', name: 'pricing_matrix', icon: DollarSign },
+                              { id: 'subscription_billing', name: 'subscription_billing', icon: RefreshCw },
+                              { id: 'invoices', name: 'invoices', icon: FileText },
+                              { id: 'payment_status', name: 'payment_status', icon: Clock },
+                              { id: 'billing_history', name: 'billing_history', icon: History },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ROOT 06: PAYMENTS & SETTLEMENTS */}
+                      <div>
+                        <div
+                          onClick={() => toggleNode('06_payments_settlements')}
+                          className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
+                        >
+                          {expandedNodes['06_payments_settlements'] ? (
+                            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                          <Landmark className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="text-[11px] font-semibold">06_PAYMENTS_SETTLEMENTS</span>
+                        </div>
+
+                        {expandedNodes['06_payments_settlements'] && (
+                          <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
+                            {[
+                              { id: 'payment_methods', name: 'payment_methods', icon: CreditCard },
+                              { id: 'payment_transactions', name: 'payment_transactions', icon: DollarSign },
+                              { id: 'settlements', name: 'settlements', icon: Landmark },
+                              { id: 'platform_fees', name: 'platform_fees', icon: Percent },
+                              { id: 'tenant_payouts', name: 'tenant_payouts', icon: Landmark },
+                              { id: 'reconciliation', name: 'reconciliation', icon: CheckCircle2 },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ROOT 07: TELEMETRY USAGE */}
+                      <div>
+                        <div
+                          onClick={() => toggleNode('07_telemetry_usage')}
+                          className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
+                        >
+                          {expandedNodes['07_telemetry_usage'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
                           )}
                           <BarChart3 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                          <span className="text-[11px] font-semibold">05_TELEMETRY_USAGE</span>
+                          <span className="text-[11px] font-semibold">07_TELEMETRY_USAGE</span>
                         </div>
 
-                        {expandedNodes['05_usage'] && (
+                        {expandedNodes['07_telemetry_usage'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('usage_metrics')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'usage_metrics'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">platform_usage.telemetry</span>
-                            </button>
+                            {[
+                              { id: 'platform_usage', name: 'platform_usage.telemetry', icon: FileCode },
+                              { id: 'tenant_usage', name: 'tenant_usage', icon: Building2 },
+                              { id: 'module_usage', name: 'module_usage', icon: Server },
+                              { id: 'transaction_volume', name: 'transaction_volume', icon: BarChart3 },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 06: EVENT BUS & IMMUTABLE AUDIT */}
+                      {/* ROOT 08: EVENTBUS AUDIT */}
                       <div>
                         <div
-                          onClick={() => toggleNode('06_events_audit')}
+                          onClick={() => toggleNode('08_eventbus_audit')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['06_events_audit'] ? (
+                          {expandedNodes['08_eventbus_audit'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
                           )}
                           <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                          <span className="text-[11px] font-semibold">06_EVENTBUS_AUDIT</span>
+                          <span className="text-[11px] font-semibold">08_EVENTBUS_AUDIT</span>
                         </div>
 
-                        {expandedNodes['06_events_audit'] && (
+                        {expandedNodes['08_eventbus_audit'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('event_bus_journal')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'event_bus_journal'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">eventbus_stream.log ({allEvents.length})</span>
-                            </button>
-                            <button
-                              onClick={() => setActiveLeafId('audit_ledger')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'audit_ledger'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 shrink-0" />
-                              <span className="truncate">immutable_audit.ledger ({allAuditRecords.length})</span>
-                            </button>
+                            {[
+                              { id: 'eventbus_stream', name: 'eventbus_stream.log', icon: FileCode },
+                              { id: 'immutable_ledger', name: 'immutable_audit.ledger', icon: Lock },
+                              { id: 'security_events', name: 'security_events', icon: Shield },
+                              { id: 'config_changes', name: 'configuration_changes', icon: History },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 07: DIAGNOSTICS & SYSTEM TESTS */}
+                      {/* ROOT 09: DIAGNOSTICS TESTS */}
                       <div>
                         <div
-                          onClick={() => toggleNode('07_tests')}
+                          onClick={() => toggleNode('09_diagnostics_tests')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['07_tests'] ? (
+                          {expandedNodes['09_diagnostics_tests'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
                           )}
                           <Play className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                          <span className="text-[11px] font-semibold">07_DIAGNOSTICS_TESTS</span>
+                          <span className="text-[11px] font-semibold">09_DIAGNOSTICS_TESTS</span>
                         </div>
 
-                        {expandedNodes['07_tests'] && (
+                        {expandedNodes['09_diagnostics_tests'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('system_tests')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'system_tests'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <Play className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span className="truncate">kernel_test_runner.spec</span>
-                            </button>
-                            <button
-                              onClick={() => setActiveLeafId('error_logs')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'error_logs'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                              <span className="truncate">error_diagnostics.log ({errorsLog.length})</span>
-                            </button>
+                            {[
+                              { id: 'test_runner', name: 'kernel_test_runner.spec', icon: Play },
+                              { id: 'system_health', name: 'system_health', icon: Activity },
+                              { id: 'failed_jobs', name: 'failed_jobs', icon: AlertTriangle },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* LAYER 08: UNIVERSAL INPUT LAYER SPEC & TELEMETRY */}
+                      {/* ROOT 10: INPUT UNIVERSAL */}
                       <div>
                         <div
-                          onClick={() => toggleNode('08_input_layer')}
+                          onClick={() => toggleNode('10_input_universal')}
                           className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
                         >
-                          {expandedNodes['08_input_layer'] ? (
+                          {expandedNodes['10_input_universal'] ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                           ) : (
                             <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
                           )}
                           <Keyboard className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                          <span className="text-[11px] font-semibold">08_INPUT_UNIVERSAL</span>
+                          <span className="text-[11px] font-semibold">10_INPUT_UNIVERSAL</span>
                         </div>
 
-                        {expandedNodes['08_input_layer'] && (
+                        {expandedNodes['10_input_universal'] && (
                           <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
-                            <button
-                              onClick={() => setActiveLeafId('universal_input_spec')}
-                              className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
-                                activeLeafId === 'universal_input_spec'
-                                  ? 'bg-[#04395e] text-white font-semibold'
-                                  : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
-                              }`}
-                            >
-                              <FileCode className="w-3 h-3 text-cyan-400 shrink-0" />
-                              <span className="truncate">input_pipeline.spec</span>
-                            </button>
+                            {[
+                              { id: 'input_pipeline', name: 'input_pipeline.spec', icon: FileCode },
+                              { id: 'command_registry', name: 'command_registry', icon: Terminal },
+                              { id: 'voice_input', name: 'voice_input', icon: Mic },
+                              { id: 'keyboard_shortcuts', name: 'keyboard_shortcuts', icon: Keyboard },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ROOT 11: PLATFORM CONFIGURATION */}
+                      <div>
+                        <div
+                          onClick={() => toggleNode('11_platform_configuration')}
+                          className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
+                        >
+                          {expandedNodes['11_platform_configuration'] ? (
+                            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                          <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="text-[11px] font-semibold">11_PLATFORM_CONFIGURATION</span>
+                        </div>
+
+                        {expandedNodes['11_platform_configuration'] && (
+                          <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
+                            {[
+                              { id: 'countries', name: 'countries', icon: Globe },
+                              { id: 'currencies', name: 'currencies', icon: Coins },
+                              { id: 'fiscal_profiles', name: 'fiscal_profiles', icon: ShieldCheck },
+                              { id: 'tax_rules', name: 'tax_rules', icon: Percent },
+                              { id: 'payment_providers', name: 'payment_providers', icon: CreditCard },
+                              { id: 'document_types', name: 'document_types', icon: FileText },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ROOT 12: PLATFORM OPERATIONS */}
+                      <div>
+                        <div
+                          onClick={() => toggleNode('12_platform_operations')}
+                          className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[#2d2d2d] cursor-pointer text-slate-300"
+                        >
+                          {expandedNodes['12_platform_operations'] ? (
+                            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                          <Users className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span className="text-[11px] font-semibold">12_PLATFORM_OPERATIONS</span>
+                        </div>
+
+                        {expandedNodes['12_platform_operations'] && (
+                          <div className="pl-3 border-l border-[#333333] ml-2 space-y-0.5">
+                            {[
+                              { id: 'administrators', name: 'administrators', icon: Users },
+                              { id: 'roles_permissions', name: 'roles_permissions', icon: Lock },
+                              { id: 'sessions', name: 'sessions', icon: Monitor },
+                              { id: 'security_policies', name: 'security_policies', icon: Shield },
+                              { id: 'system_settings', name: 'system_settings', icon: Sliders },
+                            ].map((leaf) => (
+                              <button
+                                key={leaf.id}
+                                onClick={() => setActiveLeafId(leaf.id)}
+                                className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
+                                  activeLeafId === leaf.id
+                                    ? 'bg-[#04395e] text-white font-semibold'
+                                    : 'text-slate-400 hover:bg-[#2a2d2e] hover:text-slate-200'
+                                }`}
+                              >
+                                <leaf.icon className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{leaf.name}</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -876,553 +969,154 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               {/* Main Content View per Active Leaf */}
               <div className="flex-1 overflow-y-auto p-4">
 
-                {/* 1. LEAF: TENANTS DIRECTORY */}
-                {activeLeafId === 'tenants_directory' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">Diretório Global de Tenants</h3>
-                        <p className="text-[11px] text-slate-400">Instâncias empresariais isoladas sob o ULCE Kernel</p>
-                      </div>
-                      <span className="text-xs text-slate-400 font-mono bg-[#252526] px-2.5 py-1 rounded border border-[#3c3c3c]">
-                        Total: {tenants.length} organizações
-                      </span>
-                    </div>
-
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-[#2d2d2d] text-slate-400 text-[10px] uppercase">
-                          <th className="py-2 px-2">ID / NIF</th>
-                          <th className="py-2 px-2">Nome Comercial</th>
-                          <th className="py-2 px-2">Segmento</th>
-                          <th className="py-2 px-2">País / Moeda</th>
-                          <th className="py-2 px-2">Status</th>
-                          <th className="py-2 px-2 text-right">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#2d2d2d]">
-                        {tenants.map((t) => (
-                          <tr key={t.id} className="hover:bg-[#252526] transition-colors">
-                            <td className="py-2.5 px-2">
-                              <span className="font-bold text-white block">{t.id}</span>
-                              <span className="text-[10px] text-slate-500 font-mono">NIF: {t.taxId}</span>
-                            </td>
-                            <td className="py-2.5 px-2">
-                              <span className="font-semibold text-slate-200">{t.tradeName}</span>
-                              <span className="text-[10px] text-slate-500 block truncate max-w-xs">{t.name}</span>
-                            </td>
-                            <td className="py-2.5 px-2">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#04395e] text-sky-300 border border-sky-500/30">
-                                {t.segment || 'GENERAL_RETAIL'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-2 font-mono">
-                              {t.country} ({t.currency})
-                            </td>
-                            <td className="py-2.5 px-2">
-                              <button
-                                onClick={() => handleToggleTenantStatus(t.id, t.licenseStatus)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  t.licenseStatus === 'ACTIVE'
-                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                                }`}
-                              >
-                                {t.licenseStatus || 'ACTIVE'}
-                              </button>
-                            </td>
-                            <td className="py-2.5 px-2 text-right space-x-1.5">
-                              <button
-                                onClick={() => {
-                                  onTenantSwitch(t.id);
-                                  onClose();
-                                }}
-                                className="bg-[#007acc] hover:bg-[#0062a3] text-white px-2 py-1 rounded text-[10px] font-bold"
-                              >
-                                Alternar
-                              </button>
-                              <button
-                                onClick={() => setImpersonateTarget(t)}
-                                className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-amber-500/40"
-                              >
-                                Personificar
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* 2. LEAF: BUSINESS PROFILES & LATERAL INSPECTOR (SEM TROCAR DE PÁGINA) */}
-                {(activeLeafId === 'business_profiles' || activeLeafId === 'segment_matrix' || activeLeafId.startsWith('segment_')) && (
-                  <div className="h-full flex flex-col -m-4">
-                    <BusinessProfilesView
-                      onStartProvisioning={(seg) => {
-                        setProvisioningSegment(seg);
-                        setShowProvisioningWizard(true);
-                      }}
-                      onFilterTenantsBySegment={(seg) => {
-                        setActiveLeafId('tenants_directory');
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* 3. LEAF: LICENSES REGISTRY */}
-                {activeLeafId === 'licenses_registry' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">Matriz de Licenças Criptográficas</h3>
-                        <p className="text-[11px] text-slate-400">Validação e renovação de subscrições SaaS</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {tenants.map((t) => (
-                        <div
-                          key={t.id}
-                          className="bg-[#252526] border border-[#3c3c3c] rounded p-3 flex flex-wrap items-center justify-between gap-3 text-xs"
-                        >
-                          <div>
-                            <span className="font-bold text-white block">{t.tradeName}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">Chave: {t.licenseKey || 'NÃO ATRIBUÍDA'}</span>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            <div className="text-right font-mono">
-                              <span className="text-[10px] text-slate-500 block uppercase">Expira em</span>
-                              <span className="text-slate-300">{t.licenseExpiry || 'Indeterminado'}</span>
-                            </div>
-
-                            <button
-                              onClick={() => handleRenewLicense(t.id, 12)}
-                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-[11px] font-bold"
-                            >
-                              +12 Meses
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3.1 LEAF: CREDENTIALS & RBAC HIERARCHY */}
-                {activeLeafId === 'credentials_hierarchy' && (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">
-                          Hierarquia de Credenciais & Gestão de Senhas (RBAC 3 Níveis)
-                        </h3>
-                        <p className="text-[11px] text-slate-400">
-                          Estrutura de privilégios de acesso e segurança do ecossistema PULSE.OS
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Hierarchy Level 1: Deus / Fundador */}
-                    <div className="bg-[#252526] border border-emerald-500/40 rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                            NÍVEL 1 • DEUS / FUNDADOR
-                          </span>
-                          <span className="text-xs font-bold text-white">Super Administrador da Plataforma</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-400 font-mono font-bold">ACESSO GLOBAL IRRESTRITO</span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-300">
-                        O Fundador detém controlo total da plataforma, define segmentos, renova licenças e tem permissão para gerir e resetar credenciais de qualquer organização.
-                      </p>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                        <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#3c3c3c]">
-                          <span className="text-[10px] text-slate-500 block uppercase">Código de Invocação</span>
-                          <span className="text-xs font-mono font-bold text-emerald-400">*#7668#</span>
-                        </div>
-                        <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#3c3c3c]">
-                          <span className="text-[10px] text-slate-500 block uppercase">E-mail Administrativo</span>
-                          <span className="text-xs font-mono text-slate-200">platform.admin@pulse-os.global</span>
-                        </div>
-                        <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#3c3c3c]">
-                          <span className="text-[10px] text-slate-500 block uppercase">Senha Mestra Direta</span>
-                          <span className="text-xs font-mono font-bold text-emerald-400">135790</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Hierarchy Level 2: Administrador do Tenant */}
-                    <div className="bg-[#252526] border border-[#3c3c3c] rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-bold">
-                            NÍVEL 2 • ADMINISTRADOR DO TENANT
-                          </span>
-                          <span className="text-xs font-bold text-white">Empresa Contratante (Subscrição)</span>
-                        </div>
-                        <span className="text-[10px] text-sky-400 font-mono">ISOLAMENTO TOTAL POR NIF</span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-300">
-                        As credenciais do Administrador do Tenant são definidas na <strong>subscrição do serviço</strong> no cadastro da empresa. Ele gere os produtos, clientes, faturação e <strong>define as senhas e PINs dos seus funcionários</strong>.
-                      </p>
-
-                      <div className="bg-[#1e1e1e] p-3 rounded border border-[#333333] space-y-2">
-                        <div className="text-[11px] font-bold text-slate-300 uppercase">Organizações Cadastradas:</div>
-                        <div className="space-y-1.5">
-                          {tenants.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between text-[11px] bg-[#252526] px-3 py-1.5 rounded">
-                              <div>
-                                <span className="font-bold text-white">{t.tradeName}</span>
-                                <span className="text-slate-400 ml-2 font-mono">({t.email})</span>
-                              </div>
-                              <span className="text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30 font-mono">
-                                Admin Ativo: {t.taxId}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Hierarchy Level 3: Operadores / Funcionários */}
-                    <div className="bg-[#252526] border border-[#3c3c3c] rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
-                            NÍVEL 3 • EQUIPA & OPERADORES
-                          </span>
-                          <span className="text-xs font-bold text-white">Caixas, Vendedores, Garçons e Farmacêuticos</span>
-                        </div>
-                        <span className="text-[10px] text-purple-400 font-mono">GERIDO PELO TENANT ADMIN</span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-300">
-                        Cada operador acede ao POS ou módulo com o seu PIN de 4 dígitos (ex: <code>1234</code>, <code>5678</code>) atribuído pelo administrador da sua empresa no separador <strong>RH & Equipa</strong>.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. LEAF: CAPABILITIES & FEATURE FLAGS */}
-                {activeLeafId === 'modules_flags' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">Matriz de Feature Flags & Módulos</h3>
-                        <p className="text-[11px] text-slate-400">Ativação granular por tenant</p>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse font-mono">
-                        <thead>
-                          <tr className="border-b border-[#2d2d2d] text-slate-400 text-[10px] uppercase">
-                            <th className="py-2 px-2">Tenant</th>
-                            <th className="py-2 px-2 text-center">POS Touch</th>
-                            <th className="py-2 px-2 text-center">Fiscal AGT</th>
-                            <th className="py-2 px-2 text-center">BOM / Receitas</th>
-                            <th className="py-2 px-2 text-center">Contab. PGC</th>
-                            <th className="py-2 px-2 text-center">Tesouraria</th>
-                            <th className="py-2 px-2 text-center">IA Engine</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#2d2d2d]">
-                          {tenants.map((t) => (
-                            <tr key={t.id} className="hover:bg-[#252526]">
-                              <td className="py-2 px-2 font-bold text-white">{t.tradeName}</td>
-                              {(
-                                [
-                                  'posEnabled',
-                                  'fiscalAgtEnabled',
-                                  'recipesBomEnabled',
-                                  'accountingPgcEnabled',
-                                  'treasuryEnabled',
-                                  'aiParserEnabled',
-                                ] as (keyof TenantFeatureFlags)[]
-                              ).map((flag) => {
-                                const val = t.featureFlags?.[flag];
-                                return (
-                                  <td key={flag} className="py-2 px-2 text-center">
-                                    <button
-                                      onClick={() => handleToggleFeatureFlag(t.id, flag, !!val)}
-                                      className={`w-6 h-6 rounded inline-flex items-center justify-center font-bold text-[10px] ${
-                                        val
-                                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                                          : 'bg-slate-800 text-slate-500 border border-slate-700'
-                                      }`}
-                                    >
-                                      {val ? 'ON' : 'OFF'}
-                                    </button>
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* 5. LEAF: SYSTEM TESTS & VERIFICATION */}
-                {activeLeafId === 'system_tests' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">Suite de Verificação do Kernel (6 Pilares)</h3>
-                        <p className="text-[11px] text-slate-400">Executa testes automatizados de isolamento e integridade</p>
-                      </div>
-                      <button
-                        onClick={handleRunTests}
-                        disabled={isRunningTests}
-                        className="bg-[#007acc] hover:bg-[#0062a3] text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isRunningTests ? 'animate-spin' : ''}`} />
-                        <span>Executar Todos os Testes</span>
-                      </button>
-                    </div>
-
-                    {testReport ? (
-                      <div className="space-y-3 font-mono">
-                        <div className="p-3 bg-[#252526] border border-[#3c3c3c] rounded flex items-center justify-between text-xs">
-                          <div>
-                            <span className="text-slate-400">Resultados da Execução:</span>
-                            <span className="text-emerald-400 font-bold ml-2">{testReport.passed} Aprovados</span>
-                            <span className="text-slate-500 mx-1.5">/</span>
-                            <span className={`${testReport.failed > 0 ? 'text-rose-400' : 'text-slate-500'} font-bold`}>
-                              {testReport.failed} Falhas
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-slate-500">{testReport.executedAt}</span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {testReport.results.map((r) => (
-                            <div
-                              key={r.id}
-                              className={`p-3 rounded border text-xs ${
-                                r.passed
-                                  ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
-                                  : 'bg-rose-950/20 border-rose-500/30 text-rose-300'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 font-bold">
-                                  {r.passed ? (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                  ) : (
-                                    <AlertTriangle className="w-4 h-4 text-rose-400" />
-                                  )}
-                                  <span>{r.name}</span>
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-mono">{r.durationMs} ms</span>
-                              </div>
-                              <p className="text-[11px] text-slate-400 mt-1">{r.description}</p>
-                              <div className="mt-2 text-[10px] bg-[#181818] p-2 rounded border border-[#2d2d2d] text-slate-300">
-                                {r.details}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-slate-500 bg-[#252526] rounded border border-[#3c3c3c]">
-                        Clique no botão acima para iniciar a verificação de conformidade do Kernel.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 6. LEAF: AUDIT LEDGER */}
-                {activeLeafId === 'audit_ledger' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white uppercase">Livro-Razão de Auditoria Imutável</h3>
-                        <p className="text-[11px] text-slate-400">Append-only audit trail com estado anterior e novo</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 font-mono">
-                      {allAuditRecords.map((aud) => (
-                        <div
-                          key={aud.id}
-                          className="bg-[#252526] border border-[#3c3c3c] rounded p-2.5 text-xs hover:border-slate-500 transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-sky-400">{aud.action}</span>
-                            <span className="text-[10px] text-slate-500">{aud.timestamp}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-1">
-                            Ator: <span className="text-white">{aud.actor}</span> | Entidade: {aud.entityType} ({aud.entityId})
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 8. LEAF: UNIVERSAL INPUT LAYER SPECIFICATION & TELEMETRY */}
-                {activeLeafId === 'universal_input_spec' && (
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Keyboard className="w-4 h-4 text-cyan-400" />
-                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                            PULSE Universal Input Layer & Command Center
-                          </h3>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Arquitetura Agnostic de Entrada • Pipeline Normalizado • Hardware Scanner • Voz • Touch
-                        </p>
-                      </div>
-                      <span className="text-xs text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-1 rounded">
-                        Device: {InputNormalizer.getInstance().detectDeviceCategory()}
-                      </span>
-                    </div>
-
-                    {/* Architecture Matrix */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Left: Input Hierarchy */}
-                      <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3.5 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-200 border-b border-[#333] pb-2">
-                          <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Hierarquia Universal por Dispositivo</span>
-                        </div>
-                        <pre className="text-[11px] font-mono text-cyan-300/90 leading-relaxed bg-[#181818] p-3 rounded border border-[#2d2d2d] overflow-x-auto">
-{`INPUT UNIVERSAL
-│
-├── MOBILE
-│   ├── teclado virtual
-│   ├── toque
-│   ├── gesto
-│   ├── voz
-│   └── scanner
-│
-├── TABLET
-│   ├── toque
-│   ├── teclado virtual
-│   ├── teclado físico
-│   └── scanner
-│
-├── LAPTOP
-│   ├── teclado
-│   ├── touchpad
-│   ├── touch
-│   └── scanner
-│
-└── DESKTOP
-    ├── teclado
-    ├── rato
-    ├── numpad
-    └── scanner`}
-                        </pre>
-                      </div>
-
-                      {/* Right: Pipeline */}
-                      <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3.5 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-200 border-b border-[#333] pb-2">
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Pipeline de Normalização & Execução</span>
-                        </div>
-                        <pre className="text-[11px] font-mono text-amber-300/90 leading-relaxed bg-[#181818] p-3 rounded border border-[#2d2d2d] overflow-x-auto">
-{`QUALQUER INPUT
-      ↓
-INPUT NORMALIZER
-      ↓
-COMMAND PARSER
-      ↓
-INTENT
-      ↓
-VALIDATION
-      ↓
-COMMAND
-      ↓
-CORE`}
-                        </pre>
-                        <div className="p-2 rounded bg-amber-950/20 border border-amber-500/30 text-[11px] text-amber-300 font-sans">
-                          <strong>Regra Arquitetural:</strong> O PULSE não sabe de onde veio o comando. Todo input é normalizado para a mesma estrutura canônica.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Supported Keyboards & Keys Matrix */}
-                    <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3.5 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-200 border-b border-[#333] pb-2">
-                        <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Mapeamento de Caracteres & Teclas Aceitas</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="bg-[#181818] p-2.5 rounded border border-[#2d2d2d]">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Letras</span>
-                          <span className="font-mono text-emerald-400 font-bold">A-Z / a-z</span>
-                          <p className="text-[10px] text-slate-500 mt-1">Busca textual, comandos literais e nomes</p>
-                        </div>
-                        <div className="bg-[#181818] p-2.5 rounded border border-[#2d2d2d]">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Números</span>
-                          <span className="font-mono text-emerald-400 font-bold">0-9</span>
-                          <p className="text-[10px] text-slate-500 mt-1">Valores, quantidades, códigos e PINs</p>
-                        </div>
-                        <div className="bg-[#181818] p-2.5 rounded border border-[#2d2d2d]">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Símbolos</span>
-                          <span className="font-mono text-emerald-400 font-bold">* # + - / = . , : ; @</span>
-                          <p className="text-[10px] text-slate-500 mt-1">Sintaxes de comando e atalhos especiais</p>
-                        </div>
-                        <div className="bg-[#181818] p-2.5 rounded border border-[#2d2d2d]">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Atalhos & Teclas</span>
-                          <span className="font-mono text-emerald-400 font-bold">Ctrl, Alt, Shift, Esc, F1-F12</span>
-                          <p className="text-[10px] text-slate-500 mt-1">Navegação e ações instantâneas</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Live Stream Telemetry of Inputs */}
-                    <div className="bg-[#252526] border border-[#3c3c3c] rounded p-3.5 space-y-3">
-                      <div className="flex items-center justify-between border-b border-[#333] pb-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
-                          <Scan className="w-3.5 h-3.5 text-sky-400" />
-                          <span>Stream de Telemetria de Inputs Normalizados em Tempo Real</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {InputNormalizer.getInstance().getHistory().length} capturas registadas
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto font-mono text-xs">
-                        {InputNormalizer.getInstance().getHistory().slice(-8).reverse().map((cmd, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-[#181818] border border-[#2d2d2d] p-2 rounded flex items-center justify-between text-[11px]"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sky-400 font-bold">[{cmd.sourceType}]</span>
-                              <span className="text-slate-300 font-semibold">"{cmd.rawInput}"</span>
-                              <span className="text-slate-500">&rarr;</span>
-                              <span className="text-emerald-400 font-bold">{cmd.intent}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-500">{new Date(cmd.timestamp).toLocaleTimeString()}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-
-                {/* Fallback for other leaves */}
-                {!['tenants_directory', 'segment_matrix', 'licenses_registry', 'modules_flags', 'system_tests', 'audit_ledger', 'universal_input_spec'].includes(
+                {/* 1. ROOT 01: TENANTS */}
+                {['tenants_directory', 'active_context', 'tenant_profile', 'tenant_status', 'tenant_impersonation'].includes(
                   activeLeafId
-                ) && !activeLeafId.startsWith('segment_') && (
-                  <div className="p-8 text-center text-slate-500 bg-[#252526] rounded border border-[#3c3c3c]">
-                    Nó selecionado: <strong className="text-white">{activeLeafId}</strong>. Operacional no Kernel.
-                  </div>
+                ) && (
+                  <AdminTenantsSection
+                    leafId={activeLeafId}
+                    tenants={tenants}
+                    activeTenantId={orchestrator.activeTenantId}
+                    currentUser={currentUser}
+                    onTenantSwitch={(id) => {
+                      onTenantSwitch(id);
+                      setTenants(orchestrator.getAllTenants());
+                    }}
+                    onImpersonate={(t) => setImpersonateTarget(t)}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 2. ROOT 02: PROFILES & PROVISIONING */}
+                {['business_profiles', 'acquisition_flow', 'provisioning_status', 'profile_change_requests', 'segment_matrix'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminProvisioningSection
+                    leafId={activeLeafId === 'segment_matrix' ? 'business_profiles' : activeLeafId}
+                    tenants={tenants}
+                    currentUser={currentUser}
+                    onOpenProvisioningWizard={(seg) => {
+                      setProvisioningSegment(seg);
+                      setShowProvisioningWizard(true);
+                    }}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 3. ROOT 03: LICENSES MATRIX */}
+                {['rsa_licenses', 'credentials_rbac', 'plans', 'subscriptions', 'renewals', 'suspension_expiration', 'licenses_registry', 'credentials_hierarchy'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminLicensesSection
+                    leafId={
+                      activeLeafId === 'licenses_registry'
+                        ? 'rsa_licenses'
+                        : activeLeafId === 'credentials_hierarchy'
+                        ? 'credentials_rbac'
+                        : activeLeafId
+                    }
+                    tenants={tenants}
+                    currentUser={currentUser}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 4. ROOT 04: CAPABILITIES FLAGS */}
+                {['feature_flags', 'module_catalog', 'module_dependencies', 'module_pricing', 'modules_flags'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminModulesSection
+                    leafId={activeLeafId === 'modules_flags' ? 'feature_flags' : activeLeafId}
+                    tenants={tenants}
+                    currentUser={currentUser}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 5. ROOT 05: BILLING PRICING */}
+                {['pricing_matrix', 'subscription_billing', 'invoices', 'payment_status', 'billing_history'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminBillingSection
+                    leafId={activeLeafId}
+                    tenants={tenants}
+                    currentUser={currentUser}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 6. ROOT 06: PAYMENTS & SETTLEMENTS */}
+                {['payment_methods', 'payment_transactions', 'settlements', 'platform_fees', 'tenant_payouts', 'reconciliation'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminSettlementsSection
+                    leafId={activeLeafId}
+                    tenants={tenants}
+                    currentUser={currentUser}
+                    onRefresh={handleRefreshData}
+                  />
+                )}
+
+                {/* 7. ROOT 07: TELEMETRY USAGE */}
+                {['platform_usage', 'tenant_usage', 'module_usage', 'transaction_volume', 'usage_metrics'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminTelemetrySection
+                    leafId={activeLeafId === 'usage_metrics' ? 'platform_usage' : activeLeafId}
+                    tenants={tenants}
+                  />
+                )}
+
+                {/* 8. ROOT 08: EVENTBUS AUDIT */}
+                {['eventbus_stream', 'immutable_ledger', 'security_events', 'config_changes', 'event_bus_journal', 'audit_ledger'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminAuditSection
+                    leafId={
+                      activeLeafId === 'event_bus_journal'
+                        ? 'eventbus_stream'
+                        : activeLeafId === 'audit_ledger'
+                        ? 'immutable_ledger'
+                        : activeLeafId
+                    }
+                    tenants={tenants}
+                  />
+                )}
+
+                {/* 9. ROOT 09: DIAGNOSTICS TESTS */}
+                {['test_runner', 'system_health', 'failed_jobs', 'system_tests', 'error_logs'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminDiagnosticsSection
+                    leafId={activeLeafId === 'system_tests' ? 'test_runner' : activeLeafId}
+                  />
+                )}
+
+                {/* 10. ROOT 10: INPUT UNIVERSAL */}
+                {['input_pipeline', 'command_registry', 'voice_input', 'keyboard_shortcuts', 'universal_input_spec'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminInputUniversalSection
+                    leafId={activeLeafId === 'universal_input_spec' ? 'input_pipeline' : activeLeafId}
+                  />
+                )}
+
+                {/* 11. ROOT 11: PLATFORM CONFIGURATION */}
+                {['countries', 'currencies', 'fiscal_profiles', 'tax_rules', 'payment_providers', 'document_types'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminPlatformConfigSection
+                    leafId={activeLeafId}
+                  />
+                )}
+
+                {/* 12. ROOT 12: PLATFORM OPERATIONS */}
+                {['administrators', 'roles_permissions', 'sessions', 'security_policies', 'system_settings'].includes(
+                  activeLeafId
+                ) && (
+                  <AdminOperationsSection
+                    leafId={activeLeafId}
+                  />
                 )}
 
               </div>
@@ -1486,7 +1180,6 @@ CORE`}
           initialSegment={provisioningSegment}
           onTenantProvisioned={(newTenantId) => {
             setTenants(orchestrator.getAllTenants());
-            setSelectedTenantForSegment(newTenantId);
             onTenantSwitch(newTenantId);
           }}
         />
