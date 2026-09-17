@@ -185,24 +185,29 @@ export function resolveNavigationTree(
     },
   ];
 
-  // 3. PRODUTOS & STOCK
+  // 3. PRODUTOS & STOCK (Separação Canónica entre Catálogo Mestre e Estado de Stock)
+  const produtosItems: NavLeafItem[] = [];
   const stockItems: NavLeafItem[] = [];
+
   if (isModuleActive('PRODUCTS') && isPermitted(['platform_admin', 'tenant_owner', 'manager', 'seller', 'viewer'])) {
-    stockItems.push({
+    produtosItems.push({
       id: 'leaf_stock_products',
-      label: 'Produtos & Serviços',
+      label: 'Catálogo de Artigos',
       targetTab: 'STOCK',
       subView: 'PRODUCTS',
     });
-    stockItems.push({
+    produtosItems.push({
       id: 'leaf_stock_categories',
-      label: 'Categorias',
+      label: 'Famílias & Categorias',
       targetTab: 'STOCK',
       subView: 'CATEGORIES',
     });
+  }
+
+  if (isModuleActive('STOCK') && isPermitted(['platform_admin', 'tenant_owner', 'manager', 'seller'])) {
     stockItems.push({
       id: 'leaf_stock_current',
-      label: 'Stock Atual',
+      label: 'Stock Atual & Disponível',
       targetTab: 'STOCK',
       subView: 'STOCK_CURRENT',
     });
@@ -211,13 +216,13 @@ export function resolveNavigationTree(
   if (isModuleActive('STOCK') && isPermitted(['platform_admin', 'tenant_owner', 'manager'])) {
     stockItems.push({
       id: 'leaf_stock_adjustments',
-      label: 'Movimentos / Ajustes',
+      label: 'Movimentos & Ajustes',
       targetTab: 'STOCK',
       subView: 'ADJUSTMENTS',
     });
     stockItems.push({
       id: 'leaf_stock_inventory',
-      label: 'Inventário',
+      label: 'Folha de Inventário',
       targetTab: 'STOCK',
       subView: 'INVENTORY',
     });
@@ -506,8 +511,13 @@ export function resolveNavigationTree(
       iconName: 'Package',
       submodules: [
         {
-          id: 'sub_stock_main',
-          label: 'Artigos & Armazém',
+          id: 'sub_produtos_catalog',
+          label: 'Catálogo de Produtos',
+          items: produtosItems,
+        },
+        {
+          id: 'sub_stock_inventory',
+          label: 'Gestão de Armazém & Stock',
           items: stockItems,
         },
       ],

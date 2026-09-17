@@ -31,6 +31,7 @@ interface CompactTreeSidebarProps {
   onToggleCollapse: () => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  onOpenSubscription?: () => void;
 }
 
 export const CompactTreeSidebar: React.FC<CompactTreeSidebarProps> = ({
@@ -43,6 +44,7 @@ export const CompactTreeSidebar: React.FC<CompactTreeSidebarProps> = ({
   onToggleCollapse,
   isMobileOpen = false,
   onMobileClose,
+  onOpenSubscription,
 }) => {
   // Navigation tree strictly resolved by Tenant + Modules + Role
   const treeRoots: NavRootModule[] = resolveNavigationTree(tenant, currentUser);
@@ -281,11 +283,26 @@ export const CompactTreeSidebar: React.FC<CompactTreeSidebarProps> = ({
 
       {/* 3. Footer minimalista da sidebar */}
       {!isCollapsed && (
-        <div className="p-2 border-t border-[#27272a] bg-[#121215] flex items-center justify-between text-[10px] text-slate-500 font-mono">
-          <div className="truncate">
-            {currentUser.name.split(' ')[0]} ({currentUser.role})
+        <div className="p-2 border-t border-[#27272a] bg-[#121215] space-y-1.5">
+          {onOpenSubscription && (
+            <button
+              onClick={onOpenSubscription}
+              title="Nova Subscrição / Onboarding Assistido"
+              className="w-full py-1.5 px-2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] flex items-center justify-between font-mono cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" />
+                <span className="font-semibold uppercase tracking-wider">Subscrição</span>
+              </div>
+              <span className="text-[9px] bg-emerald-500/20 px-1 rounded text-emerald-300">NOVA</span>
+            </button>
+          )}
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <div className="truncate">
+              {currentUser.name.split(' ')[0]} ({currentUser.role})
+            </div>
+            <span className="text-emerald-500 font-bold">●</span>
           </div>
-          <span className="text-emerald-500 font-bold">●</span>
         </div>
       )}
     </div>

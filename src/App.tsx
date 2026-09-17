@@ -18,6 +18,7 @@ import { Orchestrator, QuickOperationInput } from './engines/Orchestrator';
 import {
   User,
   Document,
+  DocumentType,
   Product,
   Customer,
   CustomerLedgerMovement,
@@ -79,6 +80,7 @@ import { DocumentModal } from './components/DocumentModal';
 import { AdminModal } from './components/AdminModal';
 import { CommandCenterModal } from './components/CommandCenterModal';
 import { TenantProvisioningWizard } from './components/TenantProvisioningWizard';
+import { SubscriptionWizardModal } from './components/SubscriptionWizardModal';
 import { TenantSettingsView } from './components/TenantSettingsView';
 import { BillingView } from './components/BillingView';
 import { ReportsView } from './components/reports/ReportsView';
@@ -139,6 +141,7 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showCommandCenterModal, setShowCommandCenterModal] = useState(false);
   const [showProvisioningWizard, setShowProvisioningWizard] = useState(false);
+  const [showSubscriptionWizard, setShowSubscriptionWizard] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   const [activeSubView, setActiveSubView] = useState<string | undefined>(undefined);
@@ -747,13 +750,22 @@ export default function App() {
     customerId: string;
     customerName: string;
     customerTaxId: string;
-    items: { productId: string; qty: number; unitPrice: number; discount: number }[];
+    items: {
+      productId: string;
+      qty: number;
+      unitPrice: number;
+      discount: number;
+      selectedSize?: string;
+      selectedColor?: string;
+      kitchenNotes?: string;
+    }[];
     paymentMethod: PaymentMethod;
     paidAmount: number;
-    docType: 'INVOICE' | 'RECEIPT';
+    docType: DocumentType;
   }): Document | undefined => {
     const res = orchestrator.executeOperation({
       type: params.docType === 'RECEIPT' ? 'RECEIPT' : 'SALE',
+      docType: params.docType,
       customerId: params.customerId,
       customerName: params.customerName,
       customerTaxId: params.customerTaxId,
@@ -1044,6 +1056,39 @@ export default function App() {
       desc: `Ajuste de stock registado e gravado no Audit Ledger.`,
       type: 'info',
     });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleSaveProduct = (product: Product) => {
+    orchestrator.stockEngine.upsertProduct(product);
+    syncStateFromEngines();
+    setToastMessage({
+      title: 'Catálogo Mestre Atualizado',
+      desc: `Artigo [${product.sku}] ${product.name} guardado com sucesso.`,
+      type: 'success',
+    });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleToggleProductActive = (productId: string) => {
+    const prod = orchestrator.stockEngine.getProduct(productId);
+    if (!prod) return;
+    if (prod.active !== false) {
+      orchestrator.stockEngine.deactivateProduct(productId, currentUser.name);
+      setToastMessage({
+        title: 'Artigo Desativado',
+        desc: `Artigo ${prod.name} desativado do catálogo de vendas (histórico preservado).`,
+        type: 'info',
+      });
+    } else {
+      orchestrator.stockEngine.activateProduct(productId, currentUser.name);
+      setToastMessage({
+        title: 'Artigo Reativado',
+        desc: `Artigo ${prod.name} reativado e disponível para vendas.`,
+        type: 'success',
+      });
+    }
+    syncStateFromEngines();
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -2133,6 +2178,7 @@ export default function App() {
           }}
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
+          onOpenSubscription={() => setShowSubscriptionWizard(true)}
         />
 
         {/* Dynamic View Area without clutter */}
@@ -2257,6 +2303,8 @@ export default function App() {
                 tenant={tenant}
                 onAdjustStock={handleAdjustStock}
                 onTriggerPurchaseSuggestion={handleTriggerPurchaseSuggestion}
+                onSaveProduct={handleSaveProduct}
+                onToggleProductActive={handleToggleProductActive}
                 subView={activeSubView}
               />
             )}
@@ -2431,6 +2479,7 @@ export default function App() {
         onClose={() => setIsMenuDrawerOpen(false)}
         currentUser={currentUser}
         onUserChange={setCurrentUser}
+        onOpenSubscription={() => setShowSubscriptionWizard(true)}
       />
 
       {/* Floating Toast Notification */}
@@ -2483,6 +2532,9 @@ export default function App() {
         onOpenProvisioningWizard={() => {
           setShowProvisioningWizard(true);
         }}
+        onOpenSubscription={() => {
+          setShowSubscriptionWizard(true);
+        }}
         currentUser={currentUser}
       />
 
@@ -2506,6 +2558,26 @@ export default function App() {
           setToastMessage({
             title: 'Novo Tenant Ativado',
             desc: `Ambiente e módulos configurados para ${orchestrator.tenant.tradeName} (${orchestrator.tenant.segment || orchestrator.tenant.businessSegment}).`,
+            type: 'success',
+          });
+          setTimeout(() => setToastMessage(null), 4000);
+        }}
+      />
+
+      {/* Lightweight Conversational Subscription Wizard (Q&A Onboarding) */}
+      <SubscriptionWizardModal
+        isOpen={showSubscriptionWizard}
+        onClose={() => setShowSubscriptionWizard(false)}
+        currentUser={currentUser}
+        onSubscriptionComplete={(newTenant) => {
+          orchestrator.switchTenant(newTenant.id, currentUser);
+          syncStateFromEngines();
+          setTenant(orchestrator.tenant);
+          setCurrentCountry(orchestrator.fiscalEngine.getCountry());
+          setActiveTab('POS');
+          setToastMessage({
+            title: 'Subscrição Ativada',
+            desc: `A sua empresa ${newTenant.tradeName} (${newTenant.segment}) está pronta e certificada.`,
             type: 'success',
           });
           setTimeout(() => setToastMessage(null), 4000);

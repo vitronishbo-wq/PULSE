@@ -408,6 +408,31 @@ export interface RecipeItem {
   cost: number;
 }
 
+export interface ProductSegmentAttributes {
+  pharmacy?: {
+    activeSubstance?: string;
+    prescriptionRequired?: boolean;
+    dosage?: string;
+    requiresBatchTracking?: boolean;
+  };
+  clothing?: {
+    sizes?: string[];
+    colors?: string[];
+    season?: string;
+    brand?: string;
+  };
+  restaurant?: {
+    preparationArea?: 'BAR' | 'KITCHEN' | 'GRILL' | 'PASTRY';
+    allergens?: string[];
+    caloriesKcal?: number;
+  };
+  services?: {
+    serviceDurationMins?: number;
+    withholdingTaxPercent?: number;
+    requiresAppointment?: boolean;
+  };
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -418,30 +443,31 @@ export interface Product {
   type: ProductType;
   cost: number;
   price: number;
-  taxRate: number; // percentage (e.g. 14 for Angola IVA standard)
+  taxRate: number; // default reference tax rate in catalog (e.g. 14 for Angola IVA standard)
+  taxExemptionReason?: string; // Default catalog AGT exemption code if applicable
   stockMin: number;
   stockMax: number;
   currentStock: number;
   reservedStock: number;
   unit: string; // 'un', 'cx', 'kg', 'lt', 'dose'
   barcode?: string;
+  active?: boolean; // Deactivation/status instead of physical deletion (Default: true)
+  description?: string;
+  segmentAttributes?: ProductSegmentAttributes; // Structured segment capability attributes
   recipe?: RecipeItem[]; // If type === 'recipe', BOM raw material explosion
-  // Pharmacy segment attributes
+  // Backward-compatibility optional fields (to prevent regressions in existing components)
   batchNumber?: string;
   expiryDate?: string;
   activeSubstance?: string;
   prescriptionRequired?: boolean;
-  // Clothing & Footwear segment attributes
   sizes?: string[];
   colors?: string[];
   selectedSize?: string;
   selectedColor?: string;
   season?: string;
-  // Services segment attributes
   serviceHourlyRate?: number;
-  withholdingTaxPercent?: number; // e.g. 6.5% for Angola
+  withholdingTaxPercent?: number;
   serviceDurationMins?: number;
-  // Restaurant segment attributes
   preparationArea?: 'BAR' | 'KITCHEN' | 'GRILL' | 'PASTRY';
   allergens?: string[];
 }
@@ -474,6 +500,8 @@ export interface DocumentLine {
   description: string;
   qty: number;
   unitPrice: number;
+  unitCost?: number; // Snapshot of PMP/cost at the time of sale for accurate COGS
+  productType?: ProductType; // Snapshot of type ('good' | 'service' | 'recipe')
   discount: number; // percentage or fixed
   taxRate: number;
   netTotal: number;

@@ -338,16 +338,17 @@ export const POSShiftCloseModal: React.FC<POSShiftCloseModalProps> = ({
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs cursor-pointer"
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs cursor-pointer flex items-center gap-1.5"
               >
-                Cancelar
+                <X className="w-3.5 h-3.5" />
+                <span>Cancelar</span>
               </button>
               <button
                 onClick={handleConfirmClose}
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>Confirmar & Emitir Fecho de Turno</span>
+                <span>Fechar Turno</span>
               </button>
             </div>
 

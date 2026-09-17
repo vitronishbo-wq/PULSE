@@ -83,26 +83,28 @@ export const POSCustomerModal: React.FC<POSCustomerModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div className="grid grid-cols-2 gap-2 bg-[#1b1b22] p-1 rounded-xl border border-slate-800">
+        <div className="grid grid-cols-2 gap-1.5 bg-[#1b1b22] p-1 rounded-xl border border-slate-800">
           <button
             onClick={() => setTab('SELECT')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer ${
+            className={`py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === 'SELECT'
                 ? 'bg-emerald-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Clientes Cadastrados ({customers.length})
+            <User className="w-3.5 h-3.5" />
+            <span>Cadastrados ({customers.length})</span>
           </button>
           <button
             onClick={() => setTab('NEW')}
-            className={`py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer ${
+            className={`py-1.5 rounded-lg font-bold transition-all text-xs cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === 'NEW'
                 ? 'bg-emerald-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Inserir NIF / Cliente Rápido
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Novo</span>
           </button>
         </div>
 
@@ -201,16 +203,17 @@ export const POSCustomerModal: React.FC<POSCustomerModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs cursor-pointer"
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs cursor-pointer flex items-center gap-1.5"
               >
-                Cancelar
+                <X className="w-3.5 h-3.5" />
+                <span>Cancelar</span>
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Associar Cliente</span>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Associar</span>
               </button>
             </div>
           </form>

@@ -11,8 +11,13 @@ import {
   History,
   CheckCircle2,
   Sparkles,
+  Edit2,
+  Power,
+  EyeOff,
+  Eye,
 } from 'lucide-react';
 import { BusinessSegment, Product, StockMovement, TenantProfile, User } from '../types/pulse';
+import { ProductMasterModal } from './ProductMasterModal';
 
 interface StockViewProps {
   products: Product[];
@@ -22,6 +27,8 @@ interface StockViewProps {
   tenant?: TenantProfile;
   onAdjustStock: (params: { productId: string; qtyChange: number; reason: string; actor: string }) => void;
   onTriggerPurchaseSuggestion: (product: Product) => void;
+  onSaveProduct?: (product: Product) => void;
+  onToggleProductActive?: (productId: string) => void;
   subView?: string;
 }
 
@@ -33,6 +40,8 @@ export const StockView: React.FC<StockViewProps> = ({
   tenant,
   onAdjustStock,
   onTriggerPurchaseSuggestion,
+  onSaveProduct,
+  onToggleProductActive,
   subView,
 }) => {
   const segment: BusinessSegment = tenant?.segment || tenant?.businessSegment || 'GENERAL_RETAIL';
@@ -58,6 +67,11 @@ export const StockView: React.FC<StockViewProps> = ({
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || '');
   const [adjustQty, setAdjustQty] = useState<number>(0);
   const [adjustReason, setAdjustReason] = useState<string>('Contagem Periódica de Inventário');
+
+  // Product Master Modal & Catalog States
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Filter products strictly matching tenant business segment
   const safeProducts = React.useMemo(() => {
@@ -90,8 +104,13 @@ export const StockView: React.FC<StockViewProps> = ({
   }, [products, segment]);
   const safeMovements = Array.isArray(movements) ? movements : [];
 
+  const existingCategories = React.useMemo(() => {
+    return Array.from(new Set(safeProducts.map((p) => p.category || 'Geral')));
+  }, [safeProducts]);
+
   const filteredProducts = safeProducts.filter((p) => {
     if (!p) return false;
+    if (!showInactive && p.active === false) return false;
     return (
       !search ||
       (p.name && p.name.toLowerCase().includes(search.toLowerCase())) ||
@@ -131,6 +150,20 @@ export const StockView: React.FC<StockViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onSaveProduct && (
+            <button
+              id="btn-create-product-master"
+              onClick={() => {
+                setEditingProduct(null);
+                setShowProductModal(true);
+              }}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Artigo (Catálogo)</span>
+            </button>
+          )}
+
           <button
             id="btn-open-stock-adjustment"
             onClick={() => setShowAdjustModal(true)}
@@ -191,15 +224,31 @@ export const StockView: React.FC<StockViewProps> = ({
           </button>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar artigos, SKU..."
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none"
-          />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setShowInactive(!showInactive)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border ${
+              showInactive
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+            }`}
+            title="Alternar visualização de artigos desativados"
+          >
+            {showInactive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span className="hidden md:inline">{showInactive ? 'A mostrar desativados' : 'Ocultar desativados'}</span>
+          </button>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar artigos, SKU..."
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -226,13 +275,28 @@ export const StockView: React.FC<StockViewProps> = ({
                 {filteredProducts.map((p) => {
                   const isLow = p.type !== 'service' && p.currentStock <= p.stockMin;
                   const available = p.currentStock - p.reservedStock;
+                  const isActive = p.active !== false;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-850/60 transition-colors">
-                      <td className="p-3 font-mono font-bold text-white">{p.sku}</td>
+                    <tr
+                      key={p.id}
+                      className={`transition-colors ${
+                        !isActive
+                          ? 'bg-slate-950/40 opacity-60 hover:opacity-100 hover:bg-slate-850/60'
+                          : 'hover:bg-slate-850/60'
+                      }`}
+                    >
+                      <td className="p-3 font-mono font-bold text-white flex items-center gap-1.5">
+                        <span>{p.sku}</span>
+                        {!isActive && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                            INATIVO
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3 font-medium text-slate-200">
                         <div className="flex items-center gap-1.5">
-                          <span>{p.name}</span>
+                          <span className={!isActive ? 'line-through text-slate-400' : ''}>{p.name}</span>
                           {p.type === 'recipe' && (
                             <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
                               BOM
@@ -260,19 +324,46 @@ export const StockView: React.FC<StockViewProps> = ({
                         {p.type === 'service' ? '-' : `${p.stockMin} ${p.unit}`}
                       </td>
                       <td className="p-3 text-right">
-                        {isLow ? (
-                          <button
-                            onClick={() => onTriggerPurchaseSuggestion(p)}
-                            className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-2.5 py-1 rounded-md text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <AlertTriangle className="w-3 h-3 text-rose-400" />
-                            <span>Repor Stock</span>
-                          </button>
-                        ) : (
-                          <span className="text-emerald-400 text-[11px] font-medium inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> OK
-                          </span>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isLow && isActive && (
+                            <button
+                              onClick={() => onTriggerPurchaseSuggestion(p)}
+                              title="Solicitar Reposição de Stock"
+                              className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-2 py-1 rounded text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <AlertTriangle className="w-3 h-3 text-rose-400" />
+                              <span className="hidden xl:inline">Repor</span>
+                            </button>
+                          )}
+
+                          {onSaveProduct && (
+                            <button
+                              onClick={() => {
+                                setEditingProduct(p);
+                                setShowProductModal(true);
+                              }}
+                              title="Editar Ficha no Catálogo Mestre"
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2 py-1 rounded text-[11px] inline-flex items-center gap-1 cursor-pointer transition-colors border border-slate-700"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span className="hidden xl:inline">Ficha</span>
+                            </button>
+                          )}
+
+                          {onToggleProductActive && (
+                            <button
+                              onClick={() => onToggleProductActive(p.id)}
+                              title={isActive ? 'Desativar Artigo (Preserva Histórico)' : 'Reativar Artigo no Catálogo'}
+                              className={`p-1 rounded cursor-pointer transition-colors border ${
+                                isActive
+                                  ? 'bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border-slate-700 hover:border-rose-500/30'
+                                  : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                              }`}
+                            >
+                              <Power className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -545,6 +636,25 @@ export const StockView: React.FC<StockViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+      {/* Product Master Modal (Ficha do Artigo / Catálogo Mestre) */}
+      {showProductModal && onSaveProduct && (
+        <ProductMasterModal
+          product={editingProduct}
+          isOpen={showProductModal}
+          onClose={() => {
+            setShowProductModal(false);
+            setEditingProduct(null);
+          }}
+          onSave={(prod) => {
+            onSaveProduct(prod);
+            setShowProductModal(false);
+            setEditingProduct(null);
+          }}
+          tenant={tenant}
+          currency={currency}
+          existingCategories={existingCategories}
+        />
       )}
     </div>
   );

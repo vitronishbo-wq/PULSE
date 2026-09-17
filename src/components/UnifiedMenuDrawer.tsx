@@ -24,6 +24,7 @@ interface UnifiedMenuDrawerProps {
   onClose: () => void;
   currentUser: User;
   onUserChange: (user: User) => void;
+  onOpenSubscription?: () => void;
 }
 
 export const UnifiedMenuDrawer: React.FC<UnifiedMenuDrawerProps> = ({
@@ -31,6 +32,7 @@ export const UnifiedMenuDrawer: React.FC<UnifiedMenuDrawerProps> = ({
   onClose,
   currentUser,
   onUserChange,
+  onOpenSubscription,
 }) => {
   const [currentView, setCurrentView] = useState<'MAIN' | 'SWITCH_USER' | 'PREFERENCES' | 'HELP'>('MAIN');
   
@@ -182,6 +184,28 @@ export const UnifiedMenuDrawer: React.FC<UnifiedMenuDrawerProps> = ({
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
                 </button>
+
+                {/* ➔ Nova Subscrição / Ativação */}
+                {onOpenSubscription && (
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      onOpenSubscription();
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 transition-colors cursor-pointer group text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-xs text-emerald-300">Nova Subscrição</div>
+                        <div className="text-[10px] text-emerald-400/80">Ativação rápida assistida por perguntas</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-emerald-400" />
+                  </button>
+                )}
 
                 {/* ➔ Ajuda */}
                 <button

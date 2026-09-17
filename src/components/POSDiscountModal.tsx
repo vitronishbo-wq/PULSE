@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Percent, ShieldCheck, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { X, Percent, ShieldCheck, AlertCircle, CheckCircle2, Lock, Trash2 } from 'lucide-react';
 import { User } from '../types/pulse';
 
 interface POSDiscountModalProps {
@@ -212,16 +212,17 @@ export const POSDiscountModal: React.FC<POSDiscountModalProps> = ({
               onApplyDiscount(0, currentUser.name);
               onClose();
             }}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded-xl font-bold text-xs cursor-pointer"
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded-lg font-semibold text-xs cursor-pointer flex items-center gap-1.5"
           >
-            Remover Desconto
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Remover</span>
           </button>
           <button
             onClick={handleApply}
-            className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Aplicar Desconto</span>
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Aplicar</span>
           </button>
         </div>
 

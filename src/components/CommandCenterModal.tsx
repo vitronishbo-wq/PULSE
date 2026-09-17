@@ -36,6 +36,7 @@ interface CommandCenterModalProps {
   onOpenQuickOp: (type: 'SALE' | 'PURCHASE' | 'RECEIPT' | 'PAYMENT' | 'QUOTATION' | 'RETURN') => void;
   onOpenAdmin: () => void;
   onOpenProvisioningWizard?: () => void;
+  onOpenSubscription?: () => void;
   currentUser: User;
 }
 
@@ -46,6 +47,7 @@ export const CommandCenterModal: React.FC<CommandCenterModalProps> = ({
   onOpenQuickOp,
   onOpenAdmin,
   onOpenProvisioningWizard,
+  onOpenSubscription,
   currentUser,
 }) => {
 
@@ -290,6 +292,20 @@ export const CommandCenterModal: React.FC<CommandCenterModalProps> = ({
         normalizer.ingestRawInput('*#7668#', 'SERVICE_DIALER');
         onClose();
         onOpenAdmin();
+      },
+    },
+    {
+      id: 'cmd-subscription-wizard',
+      label: 'Subscrição Assistida (Perguntas Rápidas & OTP)',
+      shortcut: 'SUBS',
+      icon: Sparkles,
+      action: () => {
+        onClose();
+        if (onOpenSubscription) {
+          onOpenSubscription();
+        } else if (onOpenProvisioningWizard) {
+          onOpenProvisioningWizard();
+        }
       },
     },
     {

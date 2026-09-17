@@ -162,9 +162,10 @@ export const POSReprintModal: React.FC<POSReprintModalProps> = ({
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs cursor-pointer"
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs cursor-pointer flex items-center gap-1.5"
           >
-            Fechar
+            <X className="w-3.5 h-3.5" />
+            <span>Fechar</span>
           </button>
         </div>
 

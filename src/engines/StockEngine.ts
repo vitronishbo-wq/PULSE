@@ -229,6 +229,63 @@ export class StockEngine {
   }
 
   public upsertProduct(product: Product): void {
-    this.products.set(product.id, { ...product });
+    const existing = this.products.get(product.id);
+    const active = product.active !== undefined ? product.active : (existing?.active ?? true);
+    this.products.set(product.id, { ...existing, ...product, active });
+  }
+
+  /**
+   * Safe deactivation instead of physical deletion
+   * If a product has movements, it cannot be physically removed to preserve SAF-T / audit integrity.
+   */
+  public deactivateProduct(productId: string, actor: string = 'system'): { success: boolean; message: string } {
+    const product = this.products.get(productId);
+    if (!product) {
+      return { success: false, message: 'Artigo não encontrado no catálogo.' };
+    }
+
+    product.active = false;
+    this.products.set(productId, { ...product });
+
+    this.eventBus.publish({
+      eventType: 'PRODUCT_UPDATED',
+      tenantId: 'tenant_luanda_01',
+      userId: actor,
+      userName: actor,
+      source: 'ORCHESTRATOR',
+      entityType: 'products',
+      entityId: productId,
+      payload: { action: 'DEACTIVATED', productId, productName: product.name },
+      sideEffects: [`Artigo [${product.sku}] ${product.name} desativado no Catálogo Mestre (não visível para novas vendas)`],
+    });
+
+    return { success: true, message: `Artigo ${product.name} desativado com sucesso.` };
+  }
+
+  /**
+   * Reactivates a deactivated product
+   */
+  public activateProduct(productId: string, actor: string = 'system'): { success: boolean; message: string } {
+    const product = this.products.get(productId);
+    if (!product) {
+      return { success: false, message: 'Artigo não encontrado no catálogo.' };
+    }
+
+    product.active = true;
+    this.products.set(productId, { ...product });
+
+    this.eventBus.publish({
+      eventType: 'PRODUCT_UPDATED',
+      tenantId: 'tenant_luanda_01',
+      userId: actor,
+      userName: actor,
+      source: 'ORCHESTRATOR',
+      entityType: 'products',
+      entityId: productId,
+      payload: { action: 'ACTIVATED', productId, productName: product.name },
+      sideEffects: [`Artigo [${product.sku}] ${product.name} reativado no Catálogo Mestre`],
+    });
+
+    return { success: true, message: `Artigo ${product.name} reativado com sucesso.` };
   }
 }

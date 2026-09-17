@@ -11,6 +11,7 @@ import {
   User,
   Zap,
   CheckCircle2,
+  Check,
   Sparkles,
   UtensilsCrossed,
   Pill,
@@ -33,6 +34,7 @@ import {
   DollarSign,
   ArrowRightLeft,
   Lock,
+  Eye,
 } from 'lucide-react';
 import {
   Product,
@@ -40,6 +42,7 @@ import {
   PaymentMethod,
   User as SystemUser,
   Document,
+  DocumentType,
   TenantProfile,
   BusinessSegment,
   ReceiptFormat,
@@ -53,6 +56,7 @@ import { POSReprintModal } from './POSReprintModal';
 import { POSCustomerModal } from './POSCustomerModal';
 import { POSShiftCloseModal } from './POSShiftCloseModal';
 import { POSHeldCartsModal } from './POSHeldCartsModal';
+import { POSThermalReceiptModal } from './POSThermalReceiptModal';
 
 export interface CartItem {
   product: Product;
@@ -94,10 +98,18 @@ interface POSViewProps {
     customerId: string;
     customerName: string;
     customerTaxId: string;
-    items: { productId: string; qty: number; unitPrice: number; discount: number }[];
+    items: {
+      productId: string;
+      qty: number;
+      unitPrice: number;
+      discount: number;
+      selectedSize?: string;
+      selectedColor?: string;
+      kitchenNotes?: string;
+    }[];
     paymentMethod: PaymentMethod;
     paidAmount: number;
-    docType: 'INVOICE' | 'RECEIPT';
+    docType: DocumentType;
   }) => Document | undefined;
   onViewDocument: (doc: Document) => void;
   onCompleteReturnOrExchange?: (result: any) => void;
@@ -147,6 +159,8 @@ export const POSView: React.FC<POSViewProps> = ({
   const [showReprintModal, setShowReprintModal] = useState<boolean>(false);
   const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
   const [showInteractionModeModal, setShowInteractionModeModal] = useState<boolean>(false);
+  const [showThermalModal, setShowThermalModal] = useState<boolean>(false);
+  const [thermalModalDoc, setThermalModalDoc] = useState<Document | null>(null);
 
   // Sync external held carts if provided
   useEffect(() => {
@@ -281,6 +295,8 @@ export const POSView: React.FC<POSViewProps> = ({
   const filteredProducts = useMemo(() => {
     return safeProducts.filter((p) => {
       if (!p) return false;
+      // Inactive products are not saleable at the POS terminal
+      if (p.active === false) return false;
       const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
       const matchesSearch =
         !searchQuery ||
@@ -403,7 +419,7 @@ export const POSView: React.FC<POSViewProps> = ({
   };
 
   // 6. ➔ PAGAMENTO / CHECKOUT
-  const handleCheckout = (docType: 'INVOICE' | 'RECEIPT') => {
+  const handleCheckout = (docType: DocumentType) => {
     if (cart.length === 0) return;
 
     const doc = onCompleteSale({
@@ -415,6 +431,9 @@ export const POSView: React.FC<POSViewProps> = ({
         qty: i.qty,
         unitPrice: i.unitPrice,
         discount: i.discount || globalDiscountPercent,
+        selectedSize: i.selectedSize,
+        selectedColor: i.selectedColor,
+        kitchenNotes: i.notes,
       })),
       paymentMethod,
       paidAmount: paymentMethod === 'CREDIT' ? 0 : tenderAmount || netPayableTotal,
@@ -423,6 +442,8 @@ export const POSView: React.FC<POSViewProps> = ({
 
     if (doc) {
       setLastIssuedDoc(doc);
+      setThermalModalDoc(doc);
+      setShowThermalModal(true);
       setCart([]);
       setTenderAmount(0);
       setGlobalDiscountPercent(0);
@@ -481,35 +502,35 @@ export const POSView: React.FC<POSViewProps> = ({
     <div id="pulse-pos-view" className="space-y-3 font-mono">
       
       {/* ➔ POS HEADER & TOP TOOLBAR */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-md">
         
         {/* Left: Branding & Nova Venda */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Zap className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <Zap className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <span className="font-bold text-white uppercase tracking-wider block">
+          <div className="leading-tight">
+            <span className="font-bold text-white uppercase tracking-wider block text-xs">
               {tenant?.tradeName || 'POS TERMINAL'}
             </span>
             <span className="text-[10px] text-slate-400">
-              Operador: <span className="text-white font-semibold">{currentUser.name}</span>
+              {currentUser.name}
             </span>
           </div>
 
           {/* ➔ Nova Venda Action Button */}
           <button
             onClick={handleNewSale}
-            className="ml-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95"
-            title="Iniciar uma nova venda limpa (F1 ou Ctrl+N)"
+            className="ml-1.5 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all active:scale-95"
+            title="Iniciar nova venda (F1)"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nova Venda</span>
-            <span className="text-[9px] bg-emerald-950/40 text-emerald-950 px-1 rounded font-mono">F1</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Nova</span>
+            <span className="text-[9px] bg-emerald-950/30 text-emerald-950 px-1 rounded font-mono font-bold">F1</span>
           </button>
         </div>
 
-        {/* Center: Mode Selector */}
+        {/* Center: Mode Selector (Botões Estéticos: Tátil e Click) */}
         <POSModeSelector
           mode={interactionMode}
           onChangeMode={(m) => {
@@ -519,21 +540,21 @@ export const POSView: React.FC<POSViewProps> = ({
           onOpenSettingsModal={() => setShowInteractionModeModal(true)}
         />
 
-        {/* Right Action Shortcuts: Suspender/Retomar, Fecho Turno, Reimpressão */}
+        {/* Right Action Shortcuts: Suspensas, 2ª Via, Fecho */}
         <div className="flex items-center gap-1.5 flex-wrap">
           
           {/* ➔ Suspender / Retomar Venda */}
           <button
             onClick={() => setShowHeldModal(true)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
               heldCarts.length > 0
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30 font-bold'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
-            title="Suspender ou Retomar Vendas"
+            title="Vendas Suspensas"
           >
             <PauseCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Vendas Suspensas</span>
+            <span>Suspensas</span>
             {heldCarts.length > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
                 {heldCarts.length}
@@ -544,21 +565,21 @@ export const POSView: React.FC<POSViewProps> = ({
           {/* ➔ Reimpressão */}
           <button
             onClick={() => setShowReprintModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 transition-colors cursor-pointer"
-            title="Reimprimir Talões Anteriores (2ª Via)"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 transition-colors cursor-pointer"
+            title="Reimprimir Últimos Talões (2ª Via)"
           >
             <Printer className="w-3.5 h-3.5 text-sky-400" />
-            <span>Reimpressão</span>
+            <span>2ª Via</span>
           </button>
 
           {/* ➔ Fecho de Turno */}
           <button
             onClick={() => setShowShiftCloseModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
-            title="Fecho de Turno & Caixa Z"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+            title="Fecho de Turno & Caixa"
           >
             <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Fecho Turno</span>
+            <span>Fecho</span>
           </button>
 
         </div>
@@ -566,58 +587,56 @@ export const POSView: React.FC<POSViewProps> = ({
 
       {/* Instant Print Feedback Banner */}
       {printFeedback && (
-        <div className="bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 p-2.5 rounded-xl text-xs flex items-center justify-between animate-fadeIn shadow-lg">
+        <div className="bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 px-3 py-1.5 rounded-lg text-xs flex items-center justify-between animate-fadeIn shadow-sm">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>{printFeedback}</span>
           </div>
-          <button onClick={() => setPrintFeedback(null)} className="text-emerald-400 hover:text-white">
-            <X className="w-4 h-4" />
+          <button onClick={() => setPrintFeedback(null)} className="text-emerald-400 hover:text-white cursor-pointer">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Last Issued Document Banner with Quick Reprint */}
+      {/* Last Issued Document Banner (Compacto e Silencioso) */}
       {lastIssuedDoc && (
-        <div className="bg-[#14141a] border-2 border-emerald-500/60 rounded-xl p-3 shadow-xl text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-sm font-mono">
-                  {lastIssuedDoc.docNumber}
-                </span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold">
-                  {lastIssuedDoc.docType} EMITIDO
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Total: <span className="text-emerald-400 font-bold font-mono">{(lastIssuedDoc.grossAmount ?? (lastIssuedDoc as any).total ?? 0).toLocaleString()} {currency}</span> • Cliente: {lastIssuedDoc.customerName}
-              </p>
-            </div>
+        <div className="bg-[#121217] border border-emerald-500/50 rounded-lg px-3 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2 animate-fadeIn shadow-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <span className="font-bold text-white font-mono">{lastIssuedDoc.docNumber}</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold uppercase">
+              {lastIssuedDoc.docType}
+            </span>
+            <span className="text-emerald-400 font-bold font-mono">
+              {(lastIssuedDoc.grossAmount ?? (lastIssuedDoc as any).total ?? 0).toLocaleString()} {currency}
+            </span>
+            <span className="text-slate-400 text-[11px] truncate hidden sm:inline">
+              • {lastIssuedDoc.customerName}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
-              onClick={() => handleFastPrint(lastIssuedDoc, 'THERMAL_80')}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+              onClick={() => {
+                setThermalModalDoc(lastIssuedDoc);
+                setShowThermalModal(true);
+              }}
+              className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-md text-[11px] flex items-center gap-1 cursor-pointer shadow-sm"
             >
-              <Printer className="w-4 h-4" />
-              <span>Imprimir Talão (80mm)</span>
+              <Printer className="w-3 h-3" />
+              <span>Talão</span>
             </button>
             <button
               onClick={() => onViewDocument(lastIssuedDoc)}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs cursor-pointer"
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-md text-[11px] cursor-pointer"
             >
-              Ver Documento
+              Ver
             </button>
             <button
               onClick={() => setLastIssuedDoc(null)}
-              className="p-1.5 text-slate-500 hover:text-white"
+              className="p-1 text-slate-400 hover:text-white cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -627,39 +646,39 @@ export const POSView: React.FC<POSViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         
         {/* LEFT COLUMN: ➔ PESQUISA / SCANNER & PRODUTOS (Cols 7) */}
-        <div className="lg:col-span-7 space-y-3">
+        <div className="lg:col-span-7 space-y-2.5">
           
           {/* ➔ Pesquisa / Scanner Input Bar */}
-          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-3 space-y-2">
+          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-2.5 space-y-2">
             <form onSubmit={handleBarcodeSubmit} className="relative flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Pesquisar produto por Nome, SKU ou ler Código de Barras (F2)..."
+                  placeholder="Pesquisar (Nome, SKU, Código de Barras)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#1b1b22] border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
+                  className="w-full bg-[#1b1b22] border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
                 />
               </div>
               <button
                 type="submit"
-                className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 title="Submeter leitura do scanner de código de barras"
               >
-                <Scan className="w-4 h-4" />
-                <span>Scanner</span>
+                <Scan className="w-3.5 h-3.5" />
+                <span>Scan</span>
               </button>
             </form>
 
             {/* Categories Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
                     selectedCategory === cat
                       ? 'bg-emerald-500 text-slate-950 shadow-sm'
                       : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -672,30 +691,30 @@ export const POSView: React.FC<POSViewProps> = ({
           </div>
 
           {/* Product Grid / List */}
-          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-3 min-h-[420px]">
+          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-2.5 min-h-[420px]">
             {filteredProducts.length === 0 ? (
               <div className="p-12 text-center text-slate-500 space-y-2">
-                <Search className="w-8 h-8 mx-auto text-slate-600" />
-                <p>Nenhum artigo encontrado com os termos de pesquisa.</p>
+                <Search className="w-7 h-7 mx-auto text-slate-600" />
+                <p className="text-xs">Nenhum artigo encontrado.</p>
               </div>
             ) : interactionMode === 'TOUCH' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 max-h-[520px] overflow-y-auto pr-1">
                 {filteredProducts.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => addToCart(p)}
-                    className="bg-[#1b1b22] hover:bg-[#23232c] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-3 flex flex-col justify-between text-left transition-all group cursor-pointer h-28"
+                    className="bg-[#1b1b22] hover:bg-[#23232c] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-2.5 flex flex-col justify-between text-left transition-all group cursor-pointer h-24"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       <div className="font-bold text-white text-xs line-clamp-2 group-hover:text-emerald-300">
                         {p.name}
                       </div>
-                      <div className="text-[10px] text-slate-500 font-mono">
+                      <div className="text-[10px] text-slate-500 font-mono truncate">
                         {p.sku} {p.barcode ? `• ${p.barcode}` : ''}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/80">
                       <span className="font-bold text-emerald-400 font-mono text-xs">
                         {p.price.toLocaleString()} {currency}
                       </span>
@@ -708,20 +727,20 @@ export const POSView: React.FC<POSViewProps> = ({
               </div>
             ) : (
               // CLICK / SCANNER DENSER TABLE
-              <div className="max-h-[500px] overflow-y-auto divide-y divide-slate-800">
+              <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-800/80">
                 {filteredProducts.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => addToCart(p)}
-                    className="py-2.5 px-3 flex items-center justify-between hover:bg-[#1f1f28] cursor-pointer transition-colors"
+                    className="py-2 px-2.5 flex items-center justify-between hover:bg-[#1f1f28] cursor-pointer transition-colors text-xs"
                   >
                     <div className="space-y-0.5 flex-1 min-w-0 pr-3">
                       <div className="font-bold text-white text-xs truncate">{p.name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        SKU: {p.sku} | Barcode: {p.barcode || 'N/D'} | Categoria: {p.category}
+                      <div className="text-[10px] text-slate-400 font-mono truncate">
+                        {p.sku} {p.barcode ? `| ${p.barcode}` : ''} | {p.category}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <span className="text-[11px] text-slate-400">{p.stock} {p.unit || 'UN'}</span>
                       <span className="font-bold text-emerald-400 font-mono text-xs w-24 text-right">
                         {p.price.toLocaleString()} {currency}
@@ -739,96 +758,107 @@ export const POSView: React.FC<POSViewProps> = ({
         </div>
 
         {/* RIGHT COLUMN: ➔ CARRINHO ATIVO, CLIENTE/NIF, DESCONTOS & CHECKOUT (Cols 5) */}
-        <div className="lg:col-span-5 space-y-3">
+        <div className="lg:col-span-5 space-y-2.5">
           
-          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-3.5 space-y-3">
+          <div className="bg-[#14141a] border border-slate-800 rounded-xl p-3 space-y-2.5">
             
             {/* ➔ Cliente / NIF Header */}
-            <div className="flex items-center justify-between bg-[#1b1b22] border border-slate-800 rounded-xl p-2.5">
+            <div className="flex items-center justify-between bg-[#1b1b22] border border-slate-800 rounded-xl px-2.5 py-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 flex-shrink-0">
-                  <User className="w-4 h-4" />
+                <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-300 flex-shrink-0">
+                  <User className="w-3.5 h-3.5" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] text-slate-400 uppercase">Cliente / NIF:</div>
-                  <div className="font-bold text-white text-xs truncate">
-                    {selectedCustomer.name} ({selectedCustomer.taxId || '999999999'})
-                  </div>
+                <div className="font-bold text-white text-xs truncate min-w-0">
+                  {selectedCustomer.name} <span className="text-slate-400 font-mono font-normal">({selectedCustomer.taxId || '999999999'})</span>
                 </div>
               </div>
 
               <button
                 onClick={() => setShowCustomerModal(true)}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-[11px] font-bold cursor-pointer transition-colors whitespace-nowrap"
+                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-md text-[11px] font-bold cursor-pointer transition-colors whitespace-nowrap flex items-center gap-1"
               >
-                Alterar Cliente
+                <User className="w-3 h-3" />
+                <span>Cliente</span>
               </button>
             </div>
 
             {/* ➔ Carrinho Ativo List */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                <span className="font-bold uppercase flex items-center gap-1.5">
+                <span className="font-bold flex items-center gap-1.5">
                   <ShoppingCart className="w-3.5 h-3.5" />
-                  Carrinho Ativo ({cart.reduce((a, b) => a + b.qty, 0)} artigos)
+                  Carrinho ({cart.reduce((a, b) => a + b.qty, 0)})
                 </span>
                 {cart.length > 0 && (
-                  <button
-                    onClick={() => setCart([])}
-                    className="text-rose-400 hover:underline text-[10px] cursor-pointer"
-                  >
-                    Esvaziar Carrinho
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowHeldModal(true)}
+                      className="flex items-center gap-1 text-amber-400 hover:text-amber-300 text-[10px] font-semibold cursor-pointer"
+                      title="Suspender esta venda (Pausa)"
+                    >
+                      <PauseCircle className="w-3 h-3" />
+                      <span>Pausa</span>
+                    </button>
+                    <button
+                      onClick={() => setCart([])}
+                      className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-[10px] font-semibold cursor-pointer"
+                      title="Limpar carrinho"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Limpar</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
-              <div className="min-h-[220px] max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
+              <div className="min-h-[200px] max-h-[250px] overflow-y-auto space-y-1 pr-1">
                 {cart.length === 0 ? (
-                  <div className="p-8 text-center bg-[#1b1b22] border border-slate-800 rounded-xl text-slate-500 text-xs">
-                    O carrinho está vazio. Adicione artigos através da pesquisa ou leitor de código de barras.
+                  <div className="p-6 text-center bg-[#1b1b22] border border-slate-800 rounded-xl text-slate-500 text-xs flex flex-col items-center justify-center gap-1">
+                    <ShoppingCart className="w-5 h-5 text-slate-600" />
+                    <span>Carrinho vazio</span>
                   </div>
                 ) : (
-                  cart.map((item, idx) => (
+                  cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className="bg-[#1b1b22] border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-2"
+                      className="bg-[#1b1b22] border border-slate-800 rounded-lg p-2 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-white text-xs truncate">
                           {item.product.name}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
-                          {item.unitPrice.toLocaleString()} {currency} un
+                          {item.unitPrice.toLocaleString()} {currency}
                         </div>
                       </div>
 
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-1.5">
-                        <div className="flex items-center border border-slate-700 rounded-lg bg-slate-900">
+                        <div className="flex items-center border border-slate-700 rounded-md bg-slate-900">
                           <button
                             onClick={() => updateQty(item.product.id, -1)}
-                            className="px-2 py-0.5 text-slate-300 hover:text-white"
+                            className="px-1.5 py-0.5 text-slate-300 hover:text-white"
                           >
                             -
                           </button>
-                          <span className="px-2 font-bold text-white text-xs font-mono">
+                          <span className="px-1.5 font-bold text-white text-xs font-mono">
                             {item.qty}
                           </span>
                           <button
                             onClick={() => updateQty(item.product.id, 1)}
-                            className="px-2 py-0.5 text-slate-300 hover:text-white"
+                            className="px-1.5 py-0.5 text-slate-300 hover:text-white"
                           >
                             +
                           </button>
                         </div>
 
-                        <span className="font-bold text-emerald-400 font-mono text-xs w-18 text-right">
+                        <span className="font-bold text-emerald-400 font-mono text-xs w-16 text-right">
                           {(item.qty * item.unitPrice * (1 - item.discount / 100)).toLocaleString()}
                         </span>
 
                         <button
                           onClick={() => removeFromCart(item.product.id)}
-                          className="p-1 text-slate-500 hover:text-rose-400"
+                          className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -839,11 +869,11 @@ export const POSView: React.FC<POSViewProps> = ({
               </div>
             </div>
 
-            {/* ➔ Descontos Autorizados & Subtotais */}
-            <div className="bg-[#1b1b22] border border-slate-800 rounded-xl p-3 space-y-2">
+            {/* ➔ Descontos & Subtotais */}
+            <div className="bg-[#1b1b22] border border-slate-800 rounded-xl p-2.5 space-y-1.5 text-xs">
               
               <div className="flex justify-between items-center text-slate-300">
-                <span>Subtotal Bruto:</span>
+                <span>Subtotal:</span>
                 <span className="font-bold font-mono">{grossSubtotal.toLocaleString()} {currency}</span>
               </div>
 
@@ -853,11 +883,11 @@ export const POSView: React.FC<POSViewProps> = ({
                   onClick={() => setShowDiscountModal(true)}
                   className="flex items-center gap-1 text-[11px] text-amber-400 hover:underline cursor-pointer"
                 >
-                  <Percent className="w-3.5 h-3.5" />
+                  <Percent className="w-3 h-3" />
                   <span>
                     {globalDiscountPercent > 0
-                      ? `Desconto Autorizado (${globalDiscountPercent.toFixed(0)}%):`
-                      : '+ Aplicar Desconto Autorizado'}
+                      ? `Desconto (${globalDiscountPercent.toFixed(0)}%):`
+                      : '+ Desconto'}
                   </span>
                 </button>
                 {globalDiscountPercent > 0 && (
@@ -868,60 +898,56 @@ export const POSView: React.FC<POSViewProps> = ({
               </div>
 
               {/* Total Final */}
-              <div className="border-t border-slate-800 pt-2 flex items-center justify-between">
-                <span className="font-bold text-white text-sm uppercase">Total a Pagar:</span>
-                <span className="font-mono text-lg font-black text-emerald-400">
+              <div className="border-t border-slate-800 pt-1.5 flex items-center justify-between">
+                <span className="font-bold text-white text-xs uppercase">Total:</span>
+                <span className="font-mono text-base font-black text-emerald-400">
                   {netPayableTotal.toLocaleString()} {currency}
                 </span>
               </div>
             </div>
 
             {/* ➔ Meios de Pagamento */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-slate-400 uppercase font-bold">
-                Meio de Pagamento:
-              </span>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  { id: 'CASH', label: 'Numerário', icon: Banknote },
-                  { id: 'MULTICAIXA', label: 'Multicaixa', icon: CreditCard },
-                  { id: 'TRANSFER', label: 'Transf.', icon: Building },
-                  { id: 'CREDIT', label: 'Crédito', icon: Clock },
-                ].map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        setPaymentMethod(m.id as PaymentMethod);
-                        if (m.id !== 'CASH') setTenderAmount(netPayableTotal);
-                      }}
-                      className={`p-2 rounded-xl border flex flex-col items-center gap-1 transition-all text-xs cursor-pointer ${
-                        paymentMethod === m.id
-                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold'
-                          : 'bg-[#1b1b22] border-slate-800 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-[10px]">{m.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { id: 'CASH', label: 'Numerário', icon: Banknote },
+                { id: 'MULTICAIXA', label: 'Multicaixa', icon: CreditCard },
+                { id: 'TRANSFER', label: 'Transf.', icon: Building },
+                { id: 'CREDIT', label: 'Crédito', icon: Clock },
+              ].map((m) => {
+                const Icon = m.icon;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      setPaymentMethod(m.id as PaymentMethod);
+                      if (m.id !== 'CASH') setTenderAmount(netPayableTotal);
+                    }}
+                    className={`py-2 px-1 rounded-lg border flex flex-col items-center gap-1 transition-all text-xs cursor-pointer ${
+                      paymentMethod === m.id
+                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold'
+                        : 'bg-[#1b1b22] border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-[10px]">{m.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Cash Input & Change Calculator (if CASH) */}
             {paymentMethod === 'CASH' && (
-              <div className="bg-[#1b1b22] border border-slate-800 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">
-                    Valor Entregue pelo Cliente:
+              <div className="bg-[#1b1b22] border border-slate-800 rounded-xl p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    Entregue:
                   </span>
                   <button
                     onClick={() => setTenderAmount(netPayableTotal)}
-                    className="text-[10px] text-emerald-400 hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
                   >
-                    Valor Exato
+                    <Check className="w-3 h-3" />
+                    <span>Exato</span>
                   </button>
                 </div>
 
@@ -931,7 +957,7 @@ export const POSView: React.FC<POSViewProps> = ({
                     value={tenderAmount || ''}
                     placeholder="Valor entregue..."
                     onChange={(e) => setTenderAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white font-mono font-bold text-xs focus:outline-none focus:border-emerald-400"
                   />
                   <span className="font-bold text-slate-400 text-xs">{currency}</span>
                 </div>
@@ -951,8 +977,8 @@ export const POSView: React.FC<POSViewProps> = ({
 
                 {/* Change */}
                 <div className="flex justify-between items-center pt-1 text-xs border-t border-slate-800">
-                  <span className="text-slate-400 font-bold uppercase">Troco a Devolver:</span>
-                  <span className="font-mono text-sm font-black text-amber-300">
+                  <span className="text-slate-400 font-semibold">Troco:</span>
+                  <span className="font-mono text-xs font-black text-amber-300">
                     {changeAmount.toLocaleString()} {currency}
                   </span>
                 </div>
@@ -960,31 +986,31 @@ export const POSView: React.FC<POSViewProps> = ({
             )}
 
             {/* ➔ Checkout Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
               <button
                 onClick={() => handleCheckout('RECEIPT')}
                 disabled={cart.length === 0}
-                className={`py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all ${
+                className={`py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
                   cart.length > 0
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-98'
                     : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                 }`}
               >
-                <Zap className="w-4 h-4" />
-                <span>Fatura / Recibo (FR)</span>
+                <Zap className="w-3.5 h-3.5" />
+                <span>Recibo</span>
               </button>
 
               <button
                 onClick={() => handleCheckout('INVOICE')}
                 disabled={cart.length === 0}
-                className={`py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all ${
+                className={`py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
                   cart.length > 0
                     ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
                     : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                 }`}
               >
-                <FileText className="w-4 h-4 text-sky-400" />
-                <span>Fatura (FT)</span>
+                <FileText className="w-3.5 h-3.5 text-sky-400" />
+                <span>Fatura</span>
               </button>
             </div>
 
@@ -1069,6 +1095,19 @@ export const POSView: React.FC<POSViewProps> = ({
           localStorage.setItem('pulse_pos_interaction_mode', mode);
         }}
         segment={segment}
+      />
+
+      {/* 7. Thermal Receipt Modal */}
+      <POSThermalReceiptModal
+        isOpen={showThermalModal}
+        onClose={() => {
+          setShowThermalModal(false);
+          setThermalModalDoc(null);
+        }}
+        document={thermalModalDoc}
+        tenant={tenant}
+        currentUser={currentUser}
+        currency={currency}
       />
 
     </div>

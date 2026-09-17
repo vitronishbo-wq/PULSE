@@ -55,9 +55,15 @@ export interface QuickOperationInput {
     qty: number;
     unitPrice?: number;
     discount?: number;
+    selectedSize?: string;
+    selectedColor?: string;
+    kitchenNotes?: string;
+    batchNumber?: string;
+    expiryDate?: string;
   }[];
   paymentMethod: PaymentMethod;
   paidAmount?: number;
+  docType?: DocumentType;
   notes?: string;
   actor: User;
 }
@@ -642,11 +648,18 @@ export class Orchestrator {
         description: prod.name,
         qty: item.qty,
         unitPrice,
+        unitCost: prod.cost,
+        productType: prod.type,
         discount,
         taxRate,
         netTotal: Math.round(netTotal * 100) / 100,
         taxTotal: Math.round(taxTotal * 100) / 100,
         grossTotal: Math.round(grossTotal * 100) / 100,
+        selectedSize: item.selectedSize,
+        selectedColor: item.selectedColor,
+        kitchenNotes: item.kitchenNotes,
+        batchNumber: item.batchNumber,
+        expiryDate: item.expiryDate,
       });
     });
 
@@ -693,10 +706,12 @@ export class Orchestrator {
       };
     }
 
-    let docType: DocumentType = 'INVOICE';
-    if (input.type === 'RECEIPT') docType = 'RECEIPT';
-    else if (input.type === 'QUOTATION') docType = 'QUOTATION';
-    else if (input.type === 'RETURN') docType = 'CREDIT_NOTE';
+    let docType: DocumentType = input.docType || 'INVOICE';
+    if (!input.docType) {
+      if (input.type === 'RECEIPT') docType = 'RECEIPT';
+      else if (input.type === 'QUOTATION') docType = 'QUOTATION';
+      else if (input.type === 'RETURN') docType = 'CREDIT_NOTE';
+    }
 
     const document = this.commerceEngine.createDocument({
       docType,

@@ -118,9 +118,10 @@ export const POSHeldCartsModal: React.FC<POSHeldCartsModalProps> = ({
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer whitespace-nowrap shadow-md"
+                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs cursor-pointer whitespace-nowrap shadow-sm flex items-center gap-1.5 transition-all"
               >
-                Suspender Venda
+                <PauseCircle className="w-3.5 h-3.5" />
+                <span>Suspender</span>
               </button>
             </div>
           </form>
@@ -236,9 +237,10 @@ export const POSHeldCartsModal: React.FC<POSHeldCartsModalProps> = ({
         <div className="flex justify-end pt-2 border-t border-slate-800">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs cursor-pointer"
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs cursor-pointer flex items-center gap-1.5"
           >
-            Fechar
+            <X className="w-3.5 h-3.5" />
+            <span>Fechar</span>
           </button>
         </div>
 
